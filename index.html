@@ -1,419 +1,88 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>PLC program viewer</title>
-	<link rel="icon" type="image/png" href="favicon.png">
-    <style>
-        body, html {
-            margin: 0; padding: 0; height: 100%; width: 100%;
-            display: flex; flex-direction: column;
-            font-family: Arial, sans-serif;
-        }
-        .title {
-            background: #2f3650; color: white;
-            text-align: center; padding: 10px;
-            font-weight: bold;
-        }
-        .main { display: flex; flex: 1; width: 100%; }
-        .menu {
-            background: #f0f0f0;
-            width: 320px;
-            overflow-y: auto;
-            padding: 10px;
-        }
-        .content { flex: 1; overflow: hidden; }
-        iframe {
-            width: 100%; height: 100%; border: none;
-        }
-        .menu h4 { margin-top: 10px; }
-        .menu ul { list-style-type: none; padding-left: 10px; }
-        .menu li { margin: 4px 0; }
-        .menu a { text-decoration: none; color: black; }
-        .menu a.active { color: red; }
-        .submenu { display: none; margin-left: 15px; }
-        .group { cursor: pointer; font-weight: bold; }
-        .edit-controls {
-            float: right;
-        }
-        .edit-controls button {
-            margin-left: 4px; font-size: 12px;
-        }
-        .menu-controls {
-            margin-bottom: 10px;
-        }
-        img.icon {
-            vertical-align: middle;
-            margin-right: 5px;
-        }
-        /* Nowe style dla okna dodawania */
-        #overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        #dialog {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            min-width: 300px;
-        }
-        #dialog h3 {
-            margin-top: 0;
-        }
-        #dialog label {
-            display: inline-block;
-            width: 100px;
-        }
-        #dialog input, #dialog select {
-            width: 200px;
-        }
-    </style>
+    <link rel="icon" type="image/png" href="src/favicon.png">
+    <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
-    <div class="title">PLC programme viewer: <span id="titleText" style="color:#8898c1">Example</span><button id="editTitleBtn" style="display:none; font-size:12px; margin-left:4px;">✏️</button></div>
-    <div class="main">
-        <div class="menu">
-            <div class="menu-controls">
-                <button id="addBlock">➕ Add Block</button>
-                <button id="addGroup">📁 Add Group</button>
-                <button id="toggleEdit">✏️ Edit Mode</button>
-                <button id="saveJson" style="display:none;">💾 Save JSON</button>
-                <button id="importJson" style="display:none;">📂 Import JSON</button>
-                <button id="reset" style="display:none;">🔄 Reset</button>
-                <input type="file" id="fileInput" accept=".json" style="display:none;">
-            </div>
-            <div id="menuContainer"></div>
-        </div>
-        <div class="content">
-            <iframe id="pdfViewer" src="default.html" allow="autoplay"></iframe>
-        </div>
-    </div>
+	<div class="title">
+		PLC programme viewer: <span id="titleText" style="color:#8898c1">Example</span>
+		<button id="editTitleBtn" style="display:none; font-size:12px; margin-left:4px;">✏️</button>
+	</div>
+	<div class="main">
+		<div class="menu">
+			<div class="menu-controls">
+				<button id="addBlock"><span>➕</span> Add Block</button>
+				<button id="addGroup"><span>📁</span> Add Group</button>
+				<button id="toggleEdit"><span>✏️</span> Edit Mode</button>
+				<button id="saveJson" style="display:none;"><span>💾</span> Save JSON</button>
+				<button id="importJson" style="display:none;"><span>📂</span> Import JSON</button>
+				<button id="reset" style="display:none;"><span>🔄</span> Reset</button>
+				<input type="file" id="fileInput" accept=".json" style="display:none;">
+			</div>
+			<div id="menuContainer"></div>
+		</div>
+		<div class="content">
+			<iframe id="pdfViewer" src="src/default.html" allow="autoplay"></iframe>
+		</div>
+	</div>
 
-    <div id="overlay">
-        <div id="dialog">
-            <h3 id="dialogTitle"></h3>
-            <div><label id="nameLabel" for="newName"></label> <input id="newName" type="text"></div>
-            <div id="linkField"><label for="newLink">PDF Link: </label> <input id="newLink" type="text"></div>
-            <div><label for="targetPath">Target location: </label>
-                <select id="targetPath"></select>
-            </div>
-            <div style="text-align: right; margin-top: 10px;">
-                <button id="confirmAdd">Add</button>
-                <button id="cancelAdd">Cancel</button>
-            </div>
-        </div>
-    </div>
+	<!-- Dialog for Add -->
+	<div id="overlay">
+		<div id="dialog">
+			<h3 id="dialogTitle"></h3>
+			<div id="formError" class="error-message" style="display:none;"></div>
+			<div class="form-group">
+				<label id="nameLabel" for="newName"></label>
+				<input id="newName" type="text">
+			</div>
+			<div id="linkField" class="form-group">
+				<label for="newLink">PDF Link:</label>
+				<input id="newLink" type="text">
+			</div>
+			<div id="fbOptions" class="checkbox-group" style="display:none;">
+				<label for="createFBlock">
+					<input type="checkbox" id="createFBlock">
+					Create F-Block (yellow icon)
+				</label>
+			</div>
+			<div class="form-group">
+				<label for="targetPath">Target location:</label>
+				<select id="targetPath"></select>
+			</div>
+			<div class="dialog-actions">
+				<button id="confirmAdd">Add</button>
+				<button id="cancelAdd">Cancel</button>
+			</div>
+		</div>
+	</div>
 
-    <script>
-    const menuData = [
-        {
-            title: "Program blocks",
-            icon: '<img class="icon" src="images/program_blocks.png">',
-            items: []
-        },
-        {
-            title: "PLC tags",
-            icon: '<img class="icon" src="images/plc_tags.png">',
-            items: []
-        }
-    ];
-    // Skopiowanie domyślnej struktury menu do wykorzystania przy resecie
-    const defaultMenuData = JSON.parse(JSON.stringify(menuData));
-    // Wczytanie zapisanej struktury menu z localStorage (o ile istnieje)
-    const savedData = localStorage.getItem("menuData");
-    if (savedData) {
-        try {
-            const savedMenuData = JSON.parse(savedData);
-            if (Array.isArray(savedMenuData)) {
-                menuData.length = 0;
-                menuData.push(...savedMenuData);
-            } else {
-                console.warn("Stored menuData has invalid format, using default.");
-            }
-        } catch (e) {
-            console.error("Failed to parse stored menuData, using default.", e);
-        }
-    }
+	<!-- Dialog for Edit -->
+	<div id="editOverlay">
+		<div id="editDialog">
+			<h3>Edit Item</h3>
+			<div class="form-group">
+				<label for="editText">Name:</label>
+				<input id="editText" type="text">
+			</div>
+			<div class="form-group" id="editLinkGroup">
+				<label for="editLink">Link:</label>
+				<input id="editLink" type="text">
+			</div>
+			<div id="editError" class="error-message" style="display:none;"></div>
+			<div class="dialog-actions">
+				<button id="confirmEdit">Save</button>
+				<button id="cancelEdit">Cancel</button>
+			</div>
+		</div>
+	</div>
 
-    let editMode = false;
-    // Wczytanie zapisanego tytułu strony z localStorage (o ile istnieje)
-    const savedTitle = localStorage.getItem("pageTitle");
-    if (savedTitle) {
-        document.getElementById("titleText").textContent = savedTitle;
-    }
+	<footer style="background:#2f3650; color:white; text-align:center; padding:10px; font-size:14px;">
+		Created by <a href="https://github.com/tentypcic" target="_blank" style="color:var(--link);">tentypcic</a> · © 2025
+	</footer>
 
-    function getIconSrc(text) {
-        if (text.includes('[OB')) return 'images/ob.png';
-        if (text.includes('[FB')) return 'images/fb.png';
-        if (text.includes('[FC')) return 'images/fc.png';
-        if (text.includes('[DB')) return 'images/db.png';
-        if (text.includes('[PT')) return 'images/pt.png';
-        return text.includes('Input') || text.includes('Output') ? 'images/tag_table.png' : 'images/pb.png';
-    }
-
-    function renderMenu() {
-        const container = document.getElementById("menuContainer");
-        container.innerHTML = "";
-        menuData.forEach(section => {
-            const h4 = document.createElement("h4");
-            h4.innerHTML = `${section.icon} ${section.title}`;
-            container.appendChild(h4);
-
-            const ul = document.createElement("ul");
-            section.items.forEach(item => {
-                const li = buildItem(item, section.items);
-                ul.appendChild(li);
-            });
-            container.appendChild(ul);
-        });
-    }
-
-    function buildItem(item, parentList) {
-        const li = document.createElement("li");
-        li._data = item;
-        li._parent = parentList;
-
-        const icon = document.createElement("img");
-        icon.className = "icon";
-        icon.src = getIconSrc(item.text);
-        if (item.children) {
-            li.classList.add("group");
-            li.prepend(icon);
-            li.appendChild(document.createTextNode(item.text));
-            const submenu = document.createElement("ul");
-            submenu.classList.add("submenu");
-            item.children.forEach(child => {
-                submenu.appendChild(buildItem(child, item.children));
-            });
-            li.appendChild(submenu);
-            li.addEventListener("click", e => {
-                if (e.target === li) {
-                    const isOpen = submenu.style.display === "block";
-                    submenu.style.display = isOpen ? "none" : "block";
-                    icon.src = isOpen ? "images/group.png" : "images/group_active.png";
-                }
-            });
-            // Set initial icon state
-            icon.src = "images/group.png";
-        } else {
-            const a = document.createElement("a");
-            a.href = item.link;
-            a.innerHTML = `<img class="icon" src="${getIconSrc(item.text)}"> ${item.text}`;
-            a.addEventListener("click", e => {
-                e.preventDefault();
-                document.querySelectorAll(".menu a").forEach(a => a.classList.remove("active"));
-                a.classList.add("active");
-                document.getElementById("pdfViewer").src = item.link;
-            });
-            li.appendChild(a);
-        }
-
-        if (editMode) {
-            const controls = document.createElement("span");
-            controls.className = "edit-controls";
-            const editBtn = document.createElement("button");
-            editBtn.textContent = "✏️";
-            editBtn.onclick = () => {
-                const newText = prompt("New name:", item.text);
-                if (newText) item.text = newText;
-                if (!item.children) {
-                    const newLink = prompt("New link:", item.link);
-                    if (newLink) item.link = newLink;
-                }
-                renderMenu();
-                localStorage.setItem("menuData", JSON.stringify(menuData));
-            };
-            const delBtn = document.createElement("button");
-            delBtn.textContent = "🗑";
-            delBtn.onclick = () => {
-                const idx = parentList.indexOf(item);
-                if (idx > -1) parentList.splice(idx, 1);
-                renderMenu();
-                localStorage.setItem("menuData", JSON.stringify(menuData));
-            };
-            controls.appendChild(editBtn);
-            controls.appendChild(delBtn);
-            li.appendChild(controls);
-        }
-
-        return li;
-    }
-
-    document.getElementById("toggleEdit").onclick = () => {
-        editMode = !editMode;
-        document.getElementById("saveJson").style.display = editMode ? "inline" : "none";
-        document.getElementById("importJson").style.display = editMode ? "inline" : "none";
-        document.getElementById("reset").style.display = editMode ? "inline" : "none";
-        document.getElementById("editTitleBtn").style.display = editMode ? "inline" : "none";
-        renderMenu();
-    };
-
-    document.getElementById("saveJson").onclick = () => {
-        const blob = new Blob([JSON.stringify(menuData, null, 2)], { type: "application/json" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "menu-export.json";
-        a.click();
-    };
-
-    document.getElementById("importJson").onclick = () => {
-        document.getElementById("fileInput").click();
-    };
-
-    document.getElementById("fileInput").onchange = e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            try {
-                const importedData = JSON.parse(reader.result);
-                if (!Array.isArray(importedData)) {
-                    alert("Invalid JSON file format!");
-                    return;
-                }
-                menuData.length = 0;
-                menuData.push(...importedData);
-                localStorage.setItem("menuData", JSON.stringify(menuData));
-                renderMenu();
-            } catch (error) {
-                alert("Error importing JSON: " + error);
-            }
-        };
-        reader.readAsText(file);
-        // Zresetowanie wyboru pliku, aby można było wczytać ponownie ten sam plik
-        e.target.value = "";
-    };
-
-    document.getElementById("reset").onclick = () => {
-        menuData.length = 0;
-        menuData.push(...JSON.parse(JSON.stringify(defaultMenuData)));
-        localStorage.removeItem("menuData");
-        renderMenu();
-    };
-
-    document.getElementById("addBlock").onclick = () => openAddDialog("block");
-    document.getElementById("addGroup").onclick = () => openAddDialog("group");
-    document.getElementById("editTitleBtn").onclick = () => {
-        const newTitle = prompt("New title:", document.getElementById("titleText").textContent);
-        if (newTitle) {
-            document.getElementById("titleText").textContent = newTitle;
-            localStorage.setItem("pageTitle", newTitle);
-        }
-    };
-
-    function populateTargetOptions() {
-        const select = document.getElementById("targetPath");
-        select.innerHTML = "";
-        const placeholderOption = document.createElement("option");
-        placeholderOption.value = "";
-        placeholderOption.textContent = "Select target location...";
-        placeholderOption.disabled = true;
-        placeholderOption.selected = true;
-        select.appendChild(placeholderOption);
-        menuData.forEach(section => {
-            // sekcja główna jako opcja
-            select.appendChild(new Option(section.title, section.title));
-            // opcje dla grup wewnątrz sekcji (rekurencyjnie)
-            section.items.forEach(item => addGroupOptions(item, section.title));
-        });
-        function addGroupOptions(item, basePath) {
-            if (item.children) {
-                const fullPath = basePath + " > " + item.text;
-                select.appendChild(new Option(fullPath, fullPath));
-                item.children.forEach(child => addGroupOptions(child, fullPath));
-            }
-        }
-    }
-
-    function openAddDialog(type) {
-        document.getElementById("dialogTitle").textContent = (type === "group") ? "Add Group" : "Add Block";
-        document.getElementById("nameLabel").textContent = (type === "group") ? "Group Name:" : "Block Name:";
-        document.getElementById("newName").value = "";
-        document.getElementById("newLink").value = "";
-        document.getElementById("linkField").style.display = (type === "group") ? "none" : "";
-        document.getElementById("overlay").dataset.type = type;
-        populateTargetOptions();
-        document.getElementById("overlay").style.display = "flex";
-    }
-
-    document.getElementById("confirmAdd").onclick = () => {
-        const overlay = document.getElementById("overlay");
-        const type = overlay.dataset.type;
-        const targetPath = document.getElementById("targetPath").value;
-        const newName = document.getElementById("newName").value.trim();
-        const newLink = document.getElementById("newLink").value.trim();
-        if (!targetPath || !newName || (type === "block" && !newLink)) {
-            alert("Please fill in all fields.");
-            return;
-        }
-        const parts = targetPath.split(" > ");
-        const section = menuData.find(sec => sec.title === parts[0]);
-        if (!section) {
-            alert("Target location not found.");
-            overlay.style.display = "none";
-            return;
-        }
-        let parentArray;
-        if (parts.length === 1) {
-            parentArray = section.items;
-        } else {
-            parentArray = section.items;
-            for (let i = 1; i < parts.length; i++) {
-                const groupName = parts[i];
-                const item = parentArray.find(it => it.text === groupName);
-                if (!item) {
-                    alert("Target group not found.");
-                    parentArray = null;
-                    break;
-                }
-                if (i === parts.length - 1) {
-                    if (!item.children) item.children = [];
-                    parentArray = item.children;
-                } else {
-                    if (!item.children) item.children = [];
-                    parentArray = item.children;
-                }
-            }
-        }
-        if (!parentArray) {
-            overlay.style.display = "none";
-            return;
-        }
-        if (type === "block") {
-            parentArray.push({ text: newName, link: newLink });
-        } else {
-            parentArray.push({ text: newName, children: [] });
-        }
-        parentArray.sort((a, b) => {
-            const aIsGroup = a.children ? 1 : 0;
-            const bIsGroup = b.children ? 1 : 0;
-            if (aIsGroup !== bIsGroup) {
-                return aIsGroup - bIsGroup;
-            }
-            const aText = a.text.toLowerCase();
-            const bText = b.text.toLowerCase();
-            if (aText < bText) return -1;
-            if (aText > bText) return 1;
-            return 0;
-        });
-        renderMenu();
-        overlay.style.display = "none";
-        localStorage.setItem("menuData", JSON.stringify(menuData));
-    };
-
-    document.getElementById("cancelAdd").onclick = () => {
-        document.getElementById("overlay").style.display = "none";
-    };
-
-    renderMenu();
-    </script>
-<footer style="background:#2f3650; color:white; text-align:center; padding:10px; font-size:14px;">
-    Created by <a href="https://github.com/tentypcic" target="_blank" style="color:var(--link);">tentypcic</a> · © 2025
-</footer>
+	<script src="src/app.js"></script>
 </body>
 </html>
