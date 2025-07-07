@@ -1,0 +1,82 @@
+[
+  {
+    "title": "Program blocks",
+    "icon": "<img class=\"icon\" src=\"images/program_blocks.png\">",
+    "items": [
+      {
+        "text": "Main [OB1]",
+        "link": "pdf/main.pdf",
+        "fblock": false
+      },
+      {
+        "text": "FC_InputMapping [FC2]",
+        "link": "dasdas",
+        "fblock": false
+      },
+      {
+        "text": "FB_Test [FB2]",
+        "link": "dasda",
+        "fblock": false
+      },
+      {
+        "text": "DB_InputMapping [DB2]",
+        "link": "dsad",
+        "fblock": false
+      },
+      {
+        "text": "00_Safety",
+        "children": [
+          {
+            "text": "FC_Safety [FC1]",
+            "link": "dasdsa",
+            "fblock": true
+          },
+          {
+            "text": "FB_Safety [FB1]",
+            "link": "aaa",
+            "fblock": true
+          },
+          {
+            "text": "DB_Safety [DB1]",
+            "link": "dasda",
+            "fblock": true
+          },
+          {
+            "text": "InstanceDB",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "PLC tags",
+    "icon": "<img class=\"icon\" src=\"images/plc_tags.png\">",
+    "items": [
+      {
+        "text": "IO_Tags",
+        "link": "dasda",
+        "fblock": false
+      },
+      {
+        "text": "Test",
+        "children": []
+      }
+    ]
+  },
+  {
+    "title": "PLC data types",
+    "icon": "<img class=\"icon\" src=\"images/plc_data_types.png\">",
+    "items": [
+      {
+        "text": "Test",
+        "children": []
+      },
+      {
+        "text": "UDT_Test",
+        "link": "dsadas",
+        "fblock": false
+      }
+    ]
+  }
+]
