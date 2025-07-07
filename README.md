@@ -47,7 +47,7 @@ The CMS consists of:
 ## 🚀 Getting Started
 
 1. Clone or download this repository  
-2. Open `plc_programme_viewer.html` in any modern browser  
+2. Open `index.html` in any modern browser  
 3. Use the `Edit Mode` button to unlock full functionality  
 
 > All data is saved locally in your browser (`localStorage`) – no server needed.
@@ -62,7 +62,8 @@ The CMS consists of:
 | `[FB]`         | Function block       |
 | `[FC]`         | Function             |
 | `[DB]`         | Data block           |
-| `Input/Output` | PLC tag table        |
+| `Tags`         | PLC tag table        |
+| `UDT`          | PLC data types       |
 
 ---
 
