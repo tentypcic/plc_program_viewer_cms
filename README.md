@@ -1,4 +1,19 @@
-# 🧠 PLC Programme Viewer CMS
+# PLC Programme Viewer CMS
+
+<p align="center">
+  <img src="/screenshot.png">
+</p>
+<p align="center">
+	Project code in pure HTML + JS.
+	<br />
+	<a href="https://tentypcic.github.io/plc_program_viewer_cms/">View demo</a>
+	·
+	<a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a>
+</p>
+
+---
+
+## 🧠 About The Project
 
 A lightweight, in-browser CMS for organizing and displaying PLC program documentation (PDFs) exported from Siemens TIA Portal.
 
