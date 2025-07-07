@@ -4,7 +4,7 @@
   <img src="/screenshot.png">
 </p>
 <p align="center">
-	Project code in pure HTML + JS.
+	Project code in pure HTML + CSS + JS
 	<br />
 	<a href="https://tentypcic.github.io/plc_program_viewer_cms/">View demo</a>
 	·
