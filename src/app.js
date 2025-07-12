@@ -351,14 +351,21 @@ document.getElementById("confirmAdd").onclick = () => {
     }
 
     parentArray.sort((a, b) => {
-        function getPriority(text) {
-            if (text.includes('[OB')) return 1;
-            if (text.includes('[FC')) return 2;
-            if (text.includes('[FB')) return 3;
-            if (text.includes('[DB')) return 4;
-            return 5;
-        }
-        return getPriority(a.text) - getPriority(b.text) || a.text.localeCompare(b.text);
+	const isGroupA = !!a.children;
+	const isGroupB = !!b.children;
+
+	if (isGroupA && !isGroupB) return 1;
+	if (!isGroupA && isGroupB) return -1;
+
+	function getPriority(text) {
+		if (text.includes('[OB')) return 1;
+		if (text.includes('[FC')) return 2;
+		if (text.includes('[FB')) return 3;
+		if (text.includes('[DB')) return 4;
+		return 5;
+	}
+
+	return getPriority(a.text) - getPriority(b.text) || a.text.localeCompare(b.text);
     });
 
     document.getElementById("overlay").style.display = "none";
