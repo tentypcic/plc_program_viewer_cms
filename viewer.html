@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PLC program viewer</title>
+    <link rel="icon" type="image/png" href="src/favicon.png">
+    <link rel="stylesheet" href="src/viewer-style.css">
+</head>
+<body>
+	<header>
+		<a href="index.html" class="back-link" aria-label="Back to projects">← Back to projects</a>
+		<h1>PLC programme viewer</h1>
+		<p>
+			<span id="titleText">Example</span>
+			<span id="dateText" class="date-chip" title="Project last edit"></span>
+			<button id="editTitleBtn" style="display:none; font-size:12px; margin-left:4px;">✏️</button>
+		</p>
+	</header>
+	
+	<div class="main">
+		<div class="menu">
+			<div class="menu-controls">
+				<button id="saveJson" type="button"><span>💾</span> Save JSON</button>
+				<button id="helpBtn" type="button"><span>📘</span> Instrukcja</button>
+				<button id="toggleEdit" type="button"><span>✏️</span> Edit Mode</button>
+				<button id="addBlock" type="button" style="display:none;"><span>➕</span> Add Block</button>
+				<button id="addGroup" type="button" style="display:none;"><span>📁</span> Add Group</button>
+				<button id="reset" type="button" style="display:none;"><span>🔄</span> Reset</button>
+				<button id="exportStatic" type="button" style="display:none;"><span>📦</span> Export static</button>
+				<input type="file" id="fileInput" accept=".json" style="display:none">
+			</div>
+			<div id="menuContainer" class="menu"></div>
+		</div>
+		<div class="content">
+			<iframe id="pdfViewer" src="src/default.html" allow="autoplay"></iframe>
+		</div>
+	</div>
+
+	<!-- Add dialog -->
+	<div id="overlay" style="display:none">
+		<div id="dialog">
+			<h3 id="dialogTitle"></h3>
+			<div id="formError" class="error-message" style="display:none;"></div>
+			<div class="form-group">
+				<label id="nameLabel" for="newName"></label>
+				<input id="newName" type="text">
+			</div>
+			<div id="linkField" class="form-group">
+				<label for="newLink">PDF Link:</label>
+				<input id="newLink" type="text">
+			</div>
+			<div id="fbOptions" class="checkbox-group" style="display:none;">
+				<label for="createFBlock">
+					<input type="checkbox" id="createFBlock">
+					Create F-Block (yellow icon)
+				</label>
+			</div>
+			<div class="form-group">
+				<label for="targetPath">Target location:</label>
+				<select id="targetPath"></select>
+			</div>
+			<div class="dialog-actions">
+				<button id="confirmAdd" type="button">Add</button>
+				<button id="cancelAdd" type="button">Cancel</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Edit dialog -->
+	<div id="editOverlay" style="display:none">
+		<div id="editDialog">
+			<h3>Edit Item</h3>
+			<div class="form-group">
+				<label for="editText">Name:</label>
+				<input id="editText" type="text">
+			</div>
+			<div class="form-group" id="editLinkGroup">
+				<label for="editLink">Link:</label>
+				<input id="editLink" type="text">
+			</div>
+			<div id="editError" class="error-message" style="display:none;"></div>
+			<div class="dialog-actions">
+				<button id="confirmEdit" type="button">Save</button>
+				<button id="cancelEdit" type="button">Cancel</button>
+			</div>
+		</div>
+	</div>
+	
+	<footer> Created by <a href="https://github.com/tentypcic" target="_blank" style="color:var(--link);">tentypcic</a> © 2025</footer>
+	
+	<script src="src/viewer-app.js"></script>
+</body>
+</html>
