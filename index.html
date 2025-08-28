@@ -1,88 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>PLC program viewer</title>
-    <link rel="icon" type="image/png" href="src/favicon.png">
-    <link rel="stylesheet" href="src/style.css">
+  <meta charset="UTF-8" />
+  <title>PLC programme viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="src/favicon.png">
+  <link rel="stylesheet" href="src/index-style.css">
 </head>
 <body>
-	<div class="title">
-		PLC programme viewer: <span id="titleText" style="color:#8898c1">Example</span>
-		<button id="editTitleBtn" style="display:none; font-size:12px; margin-left:4px;">✏️</button>
-	</div>
-	<div class="main">
-		<div class="menu">
-			<div class="menu-controls">
-				<button id="addBlock"><span>➕</span> Add Block</button>
-				<button id="addGroup"><span>📁</span> Add Group</button>
-				<button id="toggleEdit"><span>✏️</span> Edit Mode</button>
-				<button id="saveJson" style="display:none;"><span>💾</span> Save JSON</button>
-				<button id="importJson" style="display:none;"><span>📂</span> Import JSON</button>
-				<button id="reset" style="display:none;"><span>🔄</span> Reset</button>
-				<input type="file" id="fileInput" accept=".json" style="display:none;">
-			</div>
-			<div id="menuContainer"></div>
-		</div>
-		<div class="content">
-			<iframe id="pdfViewer" src="src/default.html" allow="autoplay"></iframe>
-		</div>
-	</div>
+  <header>
+    <h1>PLC programme viewer</h1>
+    <p>Manage your project list, import/export, and open in the viewer</p>
+  </header>
 
-	<!-- Dialog for Add -->
-	<div id="overlay">
-		<div id="dialog">
-			<h3 id="dialogTitle"></h3>
-			<div id="formError" class="error-message" style="display:none;"></div>
-			<div class="form-group">
-				<label id="nameLabel" for="newName"></label>
-				<input id="newName" type="text">
-			</div>
-			<div id="linkField" class="form-group">
-				<label for="newLink">PDF Link:</label>
-				<input id="newLink" type="text">
-			</div>
-			<div id="fbOptions" class="checkbox-group" style="display:none;">
-				<label for="createFBlock">
-					<input type="checkbox" id="createFBlock">
-					Create F-Block (yellow icon)
-				</label>
-			</div>
-			<div class="form-group">
-				<label for="targetPath">Target location:</label>
-				<select id="targetPath"></select>
-			</div>
-			<div class="dialog-actions">
-				<button id="confirmAdd">Add</button>
-				<button id="cancelAdd">Cancel</button>
-			</div>
-		</div>
-	</div>
+  <div class="wrap">
+    <div class="toolbar">
+      <button id="addBtn" class="btn">➕ Add project (.json)</button>
+      <button id="openDefaultBtn" class="btn">🧱 Open empty template</button>
+      <button id="exportBtn" class="btn">💾 Export projects.json</button>
+      <label class="btn" for="importFile">📂 Import projects.json</label>
+	  <button id="helpBtn" class="btn" aria-expanded="false">📘 Instrukcja</button>
+      <input id="importFile" type="file" accept=".json" />
+      <input id="pickJsonFile" type="file" accept=".json" />
+    </div>
+	
+	<section id="helpPanel" class="help-panel" hidden>
+		<h3>How to use the project list</h3>
+		<ol>
+		<li><strong>➕ Add project (.json)</strong> – loads a single JSON project file.</li>
+		<li><strong>🧱 Open empty template</strong> – launches the viewer with the default project.</li>
+		<li><strong>📂 Import projects.json</strong> – loads the entire list of projects.</li>
+		<li><strong>💾 Export projects.json</strong> –  saves the current list to a file.</li>
+		<li>On the project card, click<em>Open</em>, to edit in the viewer. Changes are saved locally.</li>
+		<li>Menu <li> <strong>•••</strong> menu allows you to change the name/description, replace the file, duplicate, export, or delete.</li>
+        <li>The search engine filters by name, description, and date.</li>
+        </ol>
+	</section>
 
-	<!-- Dialog for Edit -->
-	<div id="editOverlay">
-		<div id="editDialog">
-			<h3>Edit Item</h3>
-			<div class="form-group">
-				<label for="editText">Name:</label>
-				<input id="editText" type="text">
-			</div>
-			<div class="form-group" id="editLinkGroup">
-				<label for="editLink">Link:</label>
-				<input id="editLink" type="text">
-			</div>
-			<div id="editError" class="error-message" style="display:none;"></div>
-			<div class="dialog-actions">
-				<button id="confirmEdit">Save</button>
-				<button id="cancelEdit">Cancel</button>
-			</div>
-		</div>
-	</div>
+    <div class="search">
+      <input id="q" placeholder="Search by name/description/date..." />
+    </div>
 
-	<footer style="background:#2f3650; color:white; text-align:center; padding:10px; font-size:14px;">
-		Created by <a href="https://github.com/tentypcic" target="_blank" style="color:var(--link);">tentypcic</a> · © 2025
-	</footer>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" style="display:none">
+      No projects. Add new or import file <code>projects.json</code>.
+    </div>
+  </div>
+  
+  <div id="idxOverlay" style="display:none">
+    <div id="idxDialog">
+      <h3 id="idxTitle">Enter value</h3>
+      <div id="idxErr" class="error-message"></div>
+      <div class="form-group">
+        <label id="idxLabel" for="idxInput">Value:</label>
+        <input id="idxInput" type="text" />
+      </div>
+      <div class="idx-actions">
+        <button class="ok" id="idxOk">OK</button>
+        <button class="cancel" id="idxCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
-	<script src="src/app.js"></script>
+  <div id="idxConfirmOverlay" style="display:none">
+    <div id="idxConfirm">
+      <h3 id="idxConfirmTitle">Confirm</h3>
+      <div id="idxMsg">Are you sure?</div>
+      <div class="idx-actions">
+        <button class="ok" id="idxYes">OK</button>
+        <button class="cancel" id="idxNo">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <footer> Created by <a href="https://github.com/tentypcic" target="_blank" style="color:var(--link);">tentypcic</a> © 2025</footer>
+  
+  <script src="src/index-app.js"></script>
+	
 </body>
 </html>
