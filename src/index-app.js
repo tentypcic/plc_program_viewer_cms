@@ -114,7 +114,7 @@
       '<p class="desc">'+(p.description ? String(p.description).replaceAll('<','&lt;') : "")+'</p>'+
       '<button class="more" data-more-for="'+p.id+'" style="display:none">Pokaż więcej</button>'+
       '<div class="actions">'+
-        '<a class="link" data-open-id="'+p.id+'" href="#">Otwórz</a>'+
+        '<a class="link" data-open-id="'+p.id+'" href="#">Open</a>'+
         '<button class="kebab" aria-haspopup="true" aria-expanded="false" data-id="'+p.id+'">•••</button>'+
         '<div class="menu" role="menu" data-menu-for="'+p.id+'">'+
           '<button class="menu-item" data-act="rename"     data-id="'+p.id+'">✏<span>Rename</span></button>'+
@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const setOpen = (open) => {
     panel.hidden = !open;
     btn.setAttribute('aria-expanded', String(open));
-    btn.textContent = open ? '📘 Ukryj instrukcję' : '📘 Instrukcja';
+    btn.textContent = open ? '📘 Hide Help' : '📘 Help';
     if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
