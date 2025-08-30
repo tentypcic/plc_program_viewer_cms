@@ -41,7 +41,94 @@
     };
   }
 
-  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
+  
+  // ---- Auto-import helpers ----
+  async function __fetchJsonMaybe(url){
+    try{
+      const res = await fetch(url, { cache: 'no-store' });
+      if(!res.ok) return null;
+      return await res.json();
+    }catch(_){ return null; }
+  }
+
+  async function __importProjectsFromUrl(url){
+    const payload = await __fetchJsonMaybe(url);
+    if(!payload) return [];
+    const arr = Array.isArray(payload) ? payload : (payload.projects || []);
+    const out = [];
+    for(const p of arr){
+      let inline = p.inlineData || p.project || p.payload || null;
+      if(!inline && p.src){
+        const nested = await __fetchJsonMaybe(p.src);
+        if(nested){
+          if(nested.inlineData) inline = nested.inlineData;
+          else if(nested.menuData) inline = { title: nested.title || p.name || '', date: nested.date || new Date().toISOString(), menuData: nested.menuData };
+          else inline = nested;
+        }
+      }
+      if(!inline && (p.menuData || p.title || p.date)){
+        inline = { title: p.title || p.name || '', date: p.date || new Date().toISOString(), menuData: p.menuData || [] };
+      }
+      if(!inline) continue;
+      if(!inline.title) inline.title = p.title || p.name || 'Project';
+      if(!inline.date) inline.date = p.date || new Date().toISOString();
+      out.push(normalize({
+        id: p.id,
+        name: p.name || inline.title || 'Project',
+        description: p.description || '',
+        tag: p.tag || '',
+        inlineData: typeof inline === 'string' ? inline : JSON.stringify(inline)
+      }));
+    }
+    return out;
+  }
+
+  
+  async function __convertImportedData(payload){
+    const arr = Array.isArray(payload) ? payload : (payload.projects || [])
+    const out = []
+    for(const p of arr){
+      let inline = p.inlineData || p.project || p.payload || null
+      if(!inline && p.menuData){
+        inline = { title: p.title || p.name || '', date: p.date || new Date().toISOString(), menuData: p.menuData }
+      }
+      if(!inline){
+        // if this was read via fetch (src) we handled earlier; for local file import, ignore unknown entries
+        continue
+      }
+      if(typeof inline !== 'string'){
+        if(!inline.title) inline.title = p.title || p.name || 'Project'
+        if(!inline.date) inline.date = p.date || new Date().toISOString()
+      }
+      out.push(normalize({
+        id: p.id,
+        name: p.name || (typeof inline === 'string' ? 'Project' : (inline.title || 'Project')),
+        description: p.description || '',
+        tag: p.tag || '',
+        inlineData: typeof inline === 'string' ? inline : JSON.stringify(inline)
+      }))
+    }
+    return out
+  }
+async function __tryImportProjectList(){
+    // Only import if there is nothing in LS (or explicitly requested via ?import=...&replace=1)
+    const params = new URLSearchParams(location.search);
+    const replace = params.get('replace') === '1';
+    const importParam = params.get('import'); // one or more URLs separated by comma
+    const candidates = [];
+    if(importParam) importParam.split(',').forEach(u=>{ const s=u.trim(); if(s) candidates.push(s); });
+    candidates.push('projects.json'); // default in the same folder
+
+    let list = [];
+    for(const url of candidates){
+      try{
+        list = await __importProjectsFromUrl(url);
+        if(list.length) break;
+      }catch(_){}
+    }
+    return list;
+  }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
 
   function getProjectMeta(p){
     try{
@@ -286,8 +373,14 @@
     input.click();
   }
 
+  
   function exportJson(){
-    const blob = new Blob([JSON.stringify(projects, null, 2)], {type:'application/json'});
+    const filtered = projects.map(p => {
+      const copy = Object.assign({}, p);
+      delete copy.tag;
+      return copy;
+    });
+    const blob = new Blob([JSON.stringify(filtered, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'projects.json'; a.click();
@@ -308,11 +401,13 @@
     reader.readAsText(file);
   }
 
-  function openProjectById(id){
-    const p = projects.find(x=>x.id===id); if(!p) return;
-    const token = makeSessionToken(p.inlineData || getDefaultProjectPayload());
-    location.href = "./viewer.html?project="+encodeURIComponent(token);
-  }
+  
+function openProjectById(id){
+  const p = projects.find(x=>x.id===id); if(!p) return;
+  const token = makeSessionToken(p.inlineData || getDefaultProjectPayload());
+  // pass pid so viewer can sync card back
+  location.href = "./viewer.html?project=" + encodeURIComponent(token) + "&pid=" + encodeURIComponent(p.id);
+}
 
   function exportSingleProject(id){
     const p = projects.find(x=>x.id===id); if(!p) return;
@@ -333,26 +428,90 @@
     projects.unshift(copy); save(); render(projects);
   }
 
-  function openDefault(){
-    const payload = getDefaultProjectPayload();
-    const token = makeSessionToken(payload);
-    location.href = "./viewer.html?project="+encodeURIComponent(token);
-  }
+  
+function openDefault(){
+  // Build a brand-new project entry from the default payload,
+  // add it to the list, save, and open viewer with pid=<new id>
+  const payload = getDefaultProjectPayload();
+  const initial = JSON.parse(payload);
+  const title   = initial.title || "New project";
+  const proj = normalize({
+    name: title,
+    description: "Empty template",
+    tag: "",
+    inlineData: payload
+  });
+  projects.unshift(proj);
+  save();
+  // open with pid so edits sync back to this card
+  const token = makeSessionToken(proj.inlineData);
+  location.href = "./viewer.html?project=" + encodeURIComponent(token) + "&pid=" + encodeURIComponent(proj.id);
+}
 
-  // Init
-  const fromLs = localStorage.getItem(LS_KEY);
-  projects = fromLs ? JSON.parse(fromLs) : [];
-  if(!Array.isArray(projects) || projects.length === 0){
-    projects = [ normalize({
-      name: "Empty template",
-      description: "Default empty project – click Open",
-      tag: "demo",
-      inlineData: getDefaultProjectPayload()
-    }) ];
-    save();
-  }
-  render(projects);
-})();
+
+  // Init (with optional auto-import from projects.json or ?import=URL)
+  
+  // --- UI: Import JSON from local file (works on file://)
+  (function(){
+    const btn = document.getElementById("btnImportJson");
+    const input = document.getElementById("fileImport");
+    if(btn && input){
+      btn.addEventListener("click", ()=> input.click());
+      input.addEventListener("change", async (e)=>{
+        const f = e.target.files && e.target.files[0];
+        if(!f) return;
+        try{
+          const txt = await f.text();
+          const json = JSON.parse(txt);
+          const imported = await __convertImportedData(json);
+          if(!imported.length){ alert("Brak rozpoznanych projektów w pliku."); input.value=""; return; }
+          const replace = confirm("Zastąpić obecną listę projektów?\\nOK = Zastąp, Anuluj = Dodaj do listy");
+          if(replace) projects = [];
+          const existingIds = new Set(projects.map(x=>x.id));
+          for(const p of imported){
+            if(!p.id || existingIds.has(p.id)) p.id = uuid();
+            projects.push(p);
+          }
+          save();
+          render(projects);
+        }catch(err){
+          alert("Błąd podczas importu: " + (err?.message || err));
+        }finally{
+          input.value="";
+        }
+      });
+    }
+  })();
+(async function(){
+    const fromLs = localStorage.getItem(LS_KEY);
+    projects = fromLs ? JSON.parse(fromLs) : [];
+    const params = new URLSearchParams(location.search);
+    const shouldReplace = params.get('replace') === '1';
+
+    if(!Array.isArray(projects)) projects = [];
+
+    if(shouldReplace){ projects = []; }
+
+    if(projects.length === 0){
+      const imported = await __tryImportProjectList();
+      if(imported && imported.length){
+        projects = imported;
+        save();
+        render(projects);
+        return;
+      }
+      // fallback to single default
+      projects = [ normalize({
+        name: "Empty template",
+        description: "Default empty project – click Open",
+        tag: "demo",
+        inlineData: getDefaultProjectPayload()
+      }) ];
+      save();
+    }
+    render(projects);
+  })();
+
 
  window.uiPrompt = function ({ title="Enter value", label="Value:", value="", placeholder="", okText="OK", cancelText="Cancel", required=false } = {}) {
     return new Promise((resolve)=>{
@@ -447,3 +606,4 @@ document.addEventListener('DOMContentLoaded', () => {
   setOpen(opened);
   btn.addEventListener('click', () => { opened = !opened; setOpen(opened); });
 });
+})();
