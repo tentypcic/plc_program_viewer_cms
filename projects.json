@@ -1,0 +1,20 @@
+[
+  {
+    "id": "212e4275-1ec5-40c3-aa41-230ee4104f12",
+    "name": "Sample Project",
+    "description": "",
+    "inlineData": "{\n  \"title\": \"Sample Project\",\n  \"date\": \"2025-08-28T18:57:52.507Z\",\n  \"menuData\": [\n    {\n      \"title\": \"Program blocks\",\n      \"icon\": \"<img class=\\\"icon\\\" src=\\\"images/program_blocks.png\\\">\",\n      \"items\": [\n        {\n          \"text\": \"Main [OB1]\",\n          \"link\": \"pdf/main.pdf\",\n          \"fblock\": false\n        },\n        {\n          \"text\": \"FC_InputMapping [FC2]\",\n          \"link\": \"pdf/main.pdf\",\n          \"fblock\": false\n        },\n        {\n          \"text\": \"FB_Test [FB2]\",\n          \"link\": \"pdf/main.pdf\",\n          \"fblock\": false\n        },\n        {\n          \"text\": \"DB_InputMapping [DB2]\",\n          \"link\": \"pdf/main.pdf\",\n          \"fblock\": false\n        },\n        {\n          \"text\": \"00_Safety\",\n          \"children\": [\n            {\n              \"text\": \"FC_Safety [FC1]\",\n              \"link\": \"pdf/main.pdf\",\n              \"fblock\": true\n            },\n            {\n              \"text\": \"FB_Safety [FB1]\",\n              \"link\": \"pdf/main.pdf\",\n              \"fblock\": true\n            },\n            {\n              \"text\": \"DB_Safety [DB1]\",\n              \"link\": \"pdf/main.pdf\",\n              \"fblock\": true\n            },\n            {\n              \"text\": \"InstanceDB\",\n              \"children\": []\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"title\": \"PLC tags\",\n      \"icon\": \"<img class=\\\"icon\\\" src=\\\"images/plc_tags.png\\\">\",\n      \"items\": [\n        {\n          \"text\": \"IO_Tags\",\n          \"link\": \"pdf/main.pdf\",\n          \"fblock\": false\n        },\n        {\n          \"text\": \"Test\",\n          \"children\": []\n        }\n      ]\n    },\n    {\n      \"title\": \"PLC data types\",\n      \"icon\": \"<img class=\\\"icon\\\" src=\\\"images/plc_data_types.png\\\">\",\n      \"items\": [\n        {\n          \"text\": \"Test\",\n          \"children\": []\n        },\n        {\n          \"text\": \"UDT_Test\",\n          \"link\": \"pdf/main.pdf\",\n          \"fblock\": false\n        }\n      ]\n    }\n  ]\n}\n"
+  },
+  {
+    "id": "b08bc9e8-e801-4b07-ad26-34a3ab6f4c9f",
+    "name": "Empty template",
+    "description": "Empty template",
+    "inlineData": "{\n  \"title\": \"Empty template\",\n  \"edited\": \"2025-08-30T18:32:17.908Z\",\n  \"menuData\": [\n    {\n      \"title\": \"Program blocks\",\n      \"icon\": \"<img class=\\\"icon\\\" src=\\\"images/program_blocks.png\\\">\",\n      \"items\": []\n    },\n    {\n      \"title\": \"PLC tags\",\n      \"icon\": \"<img class=\\\"icon\\\" src=\\\"images/plc_tags.png\\\">\",\n      \"items\": []\n    },\n    {\n      \"title\": \"PLC data types\",\n      \"icon\": \"<img class=\\\"icon\\\" src=\\\"images/plc_data_types.png\\\">\",\n      \"items\": []\n    }\n  ]\n}"
+  },
+  {
+    "id": "52b1b0d4-ba72-429c-8594-e7eed4456b0c",
+    "name": "Sanofi",
+    "description": "Projektowy testowy",
+    "inlineData": "{\"title\":\"Sanofi\",\"date\":\"2025-08-30T18:45:49.289Z\",\"menuData\":[{\"title\":\"Program blocks\",\"icon\":\"<img class=\\\"icon\\\" src=\\\"images/program_blocks.png\\\">\",\"items\":[{\"text\":\"Main [OB1]\",\"link\":\"pdf/main.pdf\",\"fblock\":false}]},{\"title\":\"PLC tags\",\"icon\":\"<img class=\\\"icon\\\" src=\\\"images/plc_tags.png\\\">\",\"items\":[]},{\"title\":\"PLC data types\",\"icon\":\"<img class=\\\"icon\\\" src=\\\"images/plc_data_types.png\\\">\",\"items\":[]}]}"
+  }
+]
