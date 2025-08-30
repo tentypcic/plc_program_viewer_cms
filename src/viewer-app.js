@@ -8,6 +8,45 @@ let menuData = [
   { title: "PLC data types", icon: '<img class="icon" src="images/plc_data_types.png">', items: [] }
 ];
 const defaultMenuData = JSON.parse(JSON.stringify(menuData));
+// --- identify project param & optional session key / project id
+function getParam(name){ return new URLSearchParams(location.search).get(name); }
+const __projectParam = (new URLSearchParams(location.search).get("project")) || null;
+const __sessionKey = (__projectParam && __projectParam.startsWith("ls:")) ? __projectParam.slice(3) : null;
+const __pid = getParam("pid");
+
+// Build current export object used in index cards and session
+function __buildExportObj(){
+  const title = document.getElementById("titleText")?.textContent || localStorage.getItem("pageTitle") || "";
+  const date  = localStorage.getItem("pageEdited") || new Date().toISOString();
+  return { title, date, menuData };
+}
+
+function __readProjectList(){
+  try { return JSON.parse(localStorage.getItem("ppv.projects") || "[]"); } catch(_) { return []; }
+}
+function __writeProjectList(list){
+  localStorage.setItem("ppv.projects", JSON.stringify(list));
+}
+function __updateParentCard(exportObj, {updateName=false}={}){
+  if (!__pid) return;
+  const list = __readProjectList();
+  const pr = list.find(x=>x.id === __pid);
+  if (!pr) return;
+  pr.inlineData = JSON.stringify(exportObj);
+  if (updateName && exportObj.title) pr.name = exportObj.title;
+  __writeProjectList(list);
+}
+
+// Unified persist for viewer
+function persistAll({updateDate=false, updateName=false}={}){
+  if (updateDate) localStorage.setItem("pageEdited", new Date().toISOString());
+  localStorage.setItem("menuData", JSON.stringify(menuData));
+  const obj = __buildExportObj();
+  if (__sessionKey) { try { sessionStorage.setItem(__sessionKey, JSON.stringify(obj)); } catch(_) {} }
+  __updateParentCard(obj, {updateName});
+  updateDateBadge();
+}
+
 
 // ===== Last-edit badge helpers (date + HH:MM) =====
 function __fmtYMDHM(d){
@@ -159,8 +198,7 @@ function buildItem(item, parentList, sectionTitle = ""){
     delBtn.onclick = () => {
       const idx = parentList.indexOf(item);
       if (idx > -1) parentList.splice(idx, 1);
-      setEditedNow();
-      localStorage.setItem("menuData", JSON.stringify(menuData));
+      persistAll({updateDate:true});
       renderMenu();
     };
     controls.appendChild(editBtn); controls.appendChild(delBtn); row.appendChild(controls);
@@ -222,12 +260,11 @@ function setupDialogs(){
     if (editTarget && editTarget.isTitle) {
       document.getElementById("titleText").textContent = newText;
       localStorage.setItem("pageTitle", newText);
-      setEditedNow();
+      persistAll({updateDate:true, updateName:true});
     } else {
       editTarget.text = newText;
       if (editTarget.link !== undefined) editTarget.link = newLink;
-      setEditedNow();
-      localStorage.setItem("menuData", JSON.stringify(menuData));
+      persistAll({updateDate:true});
       renderMenu();
     }
     document.getElementById("editOverlay").style.display = "none";
@@ -269,7 +306,8 @@ document.getElementById("saveJson").onclick = () => {
   const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "project.json";
+  const safe = (title || "project").replace(/[^\w\-]+/g, "_");
+  a.download = safe + ".json";
   a.click();
 };
 
@@ -373,8 +411,7 @@ document.getElementById("confirmAdd").onclick = () => {
   });
 
   document.getElementById("overlay").style.display = "none";
-  setEditedNow();
-  localStorage.setItem("menuData", JSON.stringify(menuData));
+  persistAll({updateDate:true});
   renderMenu();
 };
 
