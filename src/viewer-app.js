@@ -8,45 +8,6 @@ let menuData = [
   { title: "PLC data types", icon: '<img class="icon" src="images/plc_data_types.png">', items: [] }
 ];
 const defaultMenuData = JSON.parse(JSON.stringify(menuData));
-// --- identify project param & optional session key / project id
-function getParam(name){ return new URLSearchParams(location.search).get(name); }
-const __projectParam = (new URLSearchParams(location.search).get("project")) || null;
-const __sessionKey = (__projectParam && __projectParam.startsWith("ls:")) ? __projectParam.slice(3) : null;
-const __pid = getParam("pid");
-
-// Build current export object used in index cards and session
-function __buildExportObj(){
-  const title = document.getElementById("titleText")?.textContent || localStorage.getItem("pageTitle") || "";
-  const date  = localStorage.getItem("pageEdited") || new Date().toISOString();
-  return { title, date, menuData };
-}
-
-function __readProjectList(){
-  try { return JSON.parse(localStorage.getItem("ppv.projects") || "[]"); } catch(_) { return []; }
-}
-function __writeProjectList(list){
-  localStorage.setItem("ppv.projects", JSON.stringify(list));
-}
-function __updateParentCard(exportObj, {updateName=false}={}){
-  if (!__pid) return;
-  const list = __readProjectList();
-  const pr = list.find(x=>x.id === __pid);
-  if (!pr) return;
-  pr.inlineData = JSON.stringify(exportObj);
-  if (updateName && exportObj.title) pr.name = exportObj.title;
-  __writeProjectList(list);
-}
-
-// Unified persist for viewer
-function persistAll({updateDate=false, updateName=false}={}){
-  if (updateDate) localStorage.setItem("pageEdited", new Date().toISOString());
-  localStorage.setItem("menuData", JSON.stringify(menuData));
-  const obj = __buildExportObj();
-  if (__sessionKey) { try { sessionStorage.setItem(__sessionKey, JSON.stringify(obj)); } catch(_) {} }
-  __updateParentCard(obj, {updateName});
-  updateDateBadge();
-}
-
 
 // ===== Last-edit badge helpers (date + HH:MM) =====
 function __fmtYMDHM(d){
@@ -135,7 +96,7 @@ async function loadProjectJson(url){ const res=await fetch(url); if(!res.ok) thr
 })();
 
 // ===== UI actions =====
-const titleBar = document.querySelector(".title");
+const titleBar = document.querySelector(".title") || document.querySelector("header p");
 if (titleBar) titleBar.addEventListener("click", (e) => {
   if (e.target.id === "editTitleBtn") return;
   document.getElementById("pdfViewer").src = "src/default.html";
@@ -187,7 +148,7 @@ function buildItem(item, parentList, sectionTitle = ""){
   if (editMode){
     const controls = document.createElement("span"); controls.className="edit-controls";
     const editBtn = document.createElement("button"); editBtn.textContent="✏️";
-    editBtn.onclick = () => {
+    editBtn.onclick = (ev) => { ev.stopPropagation();
       editTarget = item;
       document.getElementById("editText").value = item.text;
       document.getElementById("editLinkGroup").style.display = item.link !== undefined ? "block" : "none";
@@ -195,10 +156,11 @@ function buildItem(item, parentList, sectionTitle = ""){
       document.getElementById("editOverlay").style.display = "flex";
     };
     const delBtn = document.createElement("button"); delBtn.textContent="🗑";
-    delBtn.onclick = () => {
+    delBtn.onclick = (ev) => { ev.stopPropagation();
       const idx = parentList.indexOf(item);
       if (idx > -1) parentList.splice(idx, 1);
-      persistAll({updateDate:true});
+      setEditedNow();
+      localStorage.setItem("menuData", JSON.stringify(menuData));
       renderMenu();
     };
     controls.appendChild(editBtn); controls.appendChild(delBtn); row.appendChild(controls);
@@ -260,12 +222,14 @@ function setupDialogs(){
     if (editTarget && editTarget.isTitle) {
       document.getElementById("titleText").textContent = newText;
       localStorage.setItem("pageTitle", newText);
-      persistAll({updateDate:true, updateName:true});
+      setEditedNow();
     } else {
       editTarget.text = newText;
       if (editTarget.link !== undefined) editTarget.link = newLink;
-      persistAll({updateDate:true});
+      setEditedNow();
+      localStorage.setItem("menuData", JSON.stringify(menuData));
       renderMenu();
+      highlightLastActive();
     }
     document.getElementById("editOverlay").style.display = "none";
   };
@@ -287,16 +251,15 @@ function highlightLastActive(){
   }
 }
 
+
 const toggleBtn = document.getElementById("toggleEdit");
 if (toggleBtn) toggleBtn.onclick = () => {
   editMode = !editMode;
-  document.getElementById("addBlock").style.display = editMode ? "inline" : "none";
-  document.getElementById("addGroup").style.display = editMode ? "inline" : "none";
-  document.getElementById("reset").style.display = editMode ? "inline" : "none";
-  document.getElementById("exportStatic").style.display = editMode ? "inline" : "none";
-  document.getElementById("editTitleBtn").style.display = editMode ? "inline" : "none";
+  const ids = ["addBlock","addGroup","reset","exportStatic","editTitleBtn"];
+  ids.forEach(id=>{ const el = document.getElementById(id); if(el){ el.style.display = editMode ? "inline" : "none"; } });
   renderMenu();
 };
+
 
 // ===== Export / Import =====
 document.getElementById("saveJson").onclick = () => {
@@ -306,8 +269,7 @@ document.getElementById("saveJson").onclick = () => {
   const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  const safe = (title || "project").replace(/[^\w\-]+/g, "_");
-  a.download = safe + ".json";
+  a.download = "project.json";
   a.click();
 };
 
@@ -411,7 +373,8 @@ document.getElementById("confirmAdd").onclick = () => {
   });
 
   document.getElementById("overlay").style.display = "none";
-  persistAll({updateDate:true});
+  setEditedNow();
+  localStorage.setItem("menuData", JSON.stringify(menuData));
   renderMenu();
 };
 
