@@ -9,6 +9,48 @@ let menuData = [
 ];
 const defaultMenuData = JSON.parse(JSON.stringify(menuData));
 
+
+
+// === Sync back to index.html (project list) ===
+const __LS_LIST_KEY = "ppv.projects";
+let __PID = new URLSearchParams(location.search).get("pid") || null;
+const __slugParam = new URLSearchParams(location.search).get("slug") || null;
+if(!__PID && __slugParam){
+  try{
+    const list = JSON.parse(localStorage.getItem(__LS_LIST_KEY) || "[]");
+    const found = list.find(p=>p && p.slug === __slugParam);
+    if(found) __PID = found.id;
+  }catch(_){}
+}
+
+function __snapshot() {
+  const title = localStorage.getItem("pageTitle") 
+             || (typeof document !== "undefined" && document.getElementById("titleText") ? document.getElementById("titleText").textContent : "Project");
+  const date  = localStorage.getItem("pageEdited") || new Date().toISOString();
+  return { title, date, menuData };
+}
+
+function __persistToIndex() {
+  try {
+    if (!__PID) return; // viewer opened standalone - skip syncing
+    const raw = localStorage.getItem(__LS_LIST_KEY) || "[]";
+    let list;
+    try { list = JSON.parse(raw); } catch { list = []; }
+    const i = list.findIndex(p => p && (p.id === __PID));
+    if (i < 0) return;
+
+    const snap = __snapshot();
+    // update object used on index
+    list[i] = Object.assign({}, list[i], {
+      name: snap.title,
+      inlineData: JSON.stringify(snap, null, 2)
+    });
+    localStorage.setItem(__LS_LIST_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn("Persist error:", e);
+  }
+}
+
 // ===== Last-edit badge helpers (date + HH:MM) =====
 function __fmtYMDHM(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -30,6 +72,7 @@ function setEditedNow(){
   const iso = new Date().toISOString();
   localStorage.setItem("pageEdited", iso);
   updateDateBadge();
+  __persistToIndex();
 }
 // Back-compat alias used earlier
 function setDateChip(iso){
@@ -81,6 +124,7 @@ async function loadProjectJson(url){ const res=await fetch(url); if(!res.ok) thr
     if (newMenu) {
       menuData.length = 0; for (const it of newMenu) menuData.push(it);
       localStorage.setItem("menuData", JSON.stringify(menuData));
+      __persistToIndex();
       if (data.title || data.name) {
         const titleEl = document.getElementById("titleText");
         const newTitle = data.title || data.name;
@@ -90,6 +134,7 @@ async function loadProjectJson(url){ const res=await fetch(url); if(!res.ok) thr
       // Treat incoming date as "last edit"
       if (data.date) { localStorage.setItem("pageEdited", data.date); }
       updateDateBadge();
+      __persistToIndex();
       if (typeof renderMenu === "function") renderMenu();
     }
   }catch(e){ console.error(e); alert("Błąd wczytywania projektu: " + e.message); }
@@ -161,6 +206,7 @@ function buildItem(item, parentList, sectionTitle = ""){
       if (idx > -1) parentList.splice(idx, 1);
       setEditedNow();
       localStorage.setItem("menuData", JSON.stringify(menuData));
+      __persistToIndex();
       renderMenu();
     };
     controls.appendChild(editBtn); controls.appendChild(delBtn); row.appendChild(controls);
@@ -228,6 +274,7 @@ function setupDialogs(){
       if (editTarget.link !== undefined) editTarget.link = newLink;
       setEditedNow();
       localStorage.setItem("menuData", JSON.stringify(menuData));
+      __persistToIndex();
       renderMenu();
       highlightLastActive();
     }
@@ -277,6 +324,7 @@ document.getElementById("reset").onclick = () => {
   menuData.length = 0;
   menuData.push(...JSON.parse(JSON.stringify(defaultMenuData)));
   localStorage.removeItem("menuData");
+  __persistToIndex();
   renderMenu();
 };
 
@@ -375,6 +423,7 @@ document.getElementById("confirmAdd").onclick = () => {
   document.getElementById("overlay").style.display = "none";
   setEditedNow();
   localStorage.setItem("menuData", JSON.stringify(menuData));
+      __persistToIndex();
   renderMenu();
 };
 
