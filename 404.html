@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="x-ua-compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redirecting…</title>
+  <style>
+    html,body{height:100%} body{margin:0; display:grid; place-items:center; font:14px/1.45 system-ui, sans-serif; color:#1a2442; background:#f0f0f0}
+    .card{background:#fff; border:1px solid #bfc6da; padding:16px 18px; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.06); max-width:560px}
+    code{background:#f6f8ff; padding:2px 6px; border-radius:6px; border:1px solid #eef1fb}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="msg">Opening project…</div>
+  </div>
+<script>
+(function(){
+  const path = location.pathname.replace(/\/$/, ''); // trim trailing /
+  const parts = path.split('/').filter(Boolean);
+  // Try last segment as slug
+  const slug = parts[parts.length - 1];
+  if (!slug || slug.toLowerCase() === '404.html') {
+    document.getElementById('msg').textContent = 'Project not found.';
+    setTimeout(()=>location.replace('./index.html'), 1200);
+    return;
+  }
+  // Redirect to viewer with slug param (relative path keeps GH Pages repo base)
+  const target = './viewer.html?slug=' + encodeURIComponent(slug);
+  document.getElementById('msg').innerHTML = 'Opening <code>' + slug + '</code>…';
+  location.replace(target);
+})();
+</script>
+</body>
+</html>
