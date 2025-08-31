@@ -1,5 +1,62 @@
 (function(){
-  const LS_KEY = "ppv.projects";
+  
+  // === Slug + URL helpers ===
+  function __slugify(str){
+    const from = "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ";
+    const to   = "acelnoszzACELNOSZZ";
+    let s = String(str || "").trim();
+    for(let i=0;i<from.length;i++){ s = s.replaceAll(from[i], to[i]); }
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_){}
+    s = s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return s || 'project';
+  }
+  function __uniqueSlug(baseSlug, list, selfId){
+    let s = baseSlug || 'project';
+    const exists = slug => list.some(p => p && p.slug === slug && p.id !== selfId);
+    if(!exists(s)) return s;
+    let n = 2; while(exists(`${s}-${n}`)) n++; return `${s}-${n}`;
+  }
+  function __prettyBase(){
+    const {origin, pathname} = location;
+    const root = pathname.replace(/index\.html?$/,'').replace(/\/+$/,'') + '/';
+    return origin + root;
+  }
+  function __projectUrl(p){
+    const meta = getProjectMeta(p);
+    const slug = p.slug || __slugify(p.name || (meta.title || 'project'));
+    return __prettyBase() + encodeURIComponent(slug);
+  }
+  function __toast(msg){
+    try{
+      const old = document.getElementById('copy-hint'); if(old) old.remove();
+      const el = document.createElement('div'); el.id='copy-hint'; el.textContent = msg;
+      Object.assign(el.style,{position:'fixed',left:'50%',bottom:'24px',transform:'translateX(-50%)',background:'#1a2442',color:'#fff',padding:'8px 12px',borderRadius:'10px',fontSize:'12px',boxShadow:'0 8px 24px rgba(0,0,0,.25)',zIndex:9999});
+      document.body.appendChild(el); setTimeout(()=>el.remove(), 1400);
+    }catch(_){}
+  }
+  function __copyFallback(url){
+    const ov=document.createElement('div'); Object.assign(ov.style,{position:'fixed',inset:'0',background:'rgba(0,0,0,.35)',display:'grid',placeItems:'center',zIndex:10000});
+    const box=document.createElement('div'); Object.assign(box.style,{background:'#fff',border:'1px solid #bfc6da',borderRadius:'12px',padding:'14px',width:'min(520px,92vw)',boxShadow:'0 8px 28px rgba(0,0,0,.25)'});
+    box.innerHTML='<h3 style="margin:0 0 8px;font:600 15px system-ui;color:#1a2442">Copy project link</h3>'+
+      '<input id="__copy_url" style="width:100%;padding:10px 12px;border:1px solid #bfc6da;border-radius:10px" readonly>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">'+
+      '<button id="__copy_btn" style="border:1px solid #bfc6da;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer">Copy</button>'+
+      '<button id="__close_btn" style="border:0;background:#1a2442;color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer">Close</button>'+
+      '</div>';
+    ov.appendChild(box); document.body.appendChild(ov);
+    const inp=box.querySelector('#__copy_url'); inp.value=url; inp.focus(); inp.select();
+    function close(){ ov.remove(); }
+    box.querySelector('#__close_btn').addEventListener('click', close);
+    box.querySelector('#__copy_btn').addEventListener('click', ()=>{ inp.select(); try{ document.execCommand('copy'); __toast('Link copied'); }catch(_){}});
+    ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
+  }
+  async function __copyProjectLink(pr){
+    const url = __projectUrl(pr);
+    let ok=false; try{ await navigator.clipboard.writeText(url); ok=true; }catch(_){}
+    if(!ok) __copyFallback(url);
+    __toast(ok ? 'Link copied: '+url : 'Link ready to copy');
+  }
+const LS_KEY = "ppv.projects";
   let projects = [];
   let clampListenerInstalled = false;
 
@@ -209,6 +266,7 @@ function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
           '<button class="menu-item" data-act="replace"    data-id="'+p.id+'">📂<span>Replace JSON file</span></button>'+
           '<button class="menu-item" data-act="duplicate"  data-id="'+p.id+'">⧉<span>Duplicate</span></button>'+
           '<button class="menu-item" data-act="exportOne"  data-id="'+p.id+'">💾<span>Export project</span></button>'+
+          '<button class="menu-item" data-act="copylink"  data-id="'+p.id+'">🔗<span>Copy link</span></button>'+
           '<hr/>'+
           '<button class="menu-item danger" data-act="delete" data-id="'+p.id+'">🗑<span>Delete</span></button>'+
         '</div>'+
@@ -245,7 +303,39 @@ function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
           const name = await uiPrompt({ title:'Edit the project name', label:'Name:', value: pr.name || 'Project', required:true });
           if(name !== null){
             pr.name = name.trim();
-            save(); render(projects);
+            
+            pr.slug = __uniqueSlug(__slugify(pr.name), projects, pr.id);
+
+            // Propagate title into the project's inlineData used by viewer
+            try{
+              const raw = pr.inlineData || "";
+              let obj = null;
+              if(typeof raw === "string" && raw.trim().length){
+                try{ obj = JSON.parse(raw); }catch(_){ obj = null; }
+              }else if (raw && typeof raw === "object"){
+                obj = raw;
+              }
+              if(!obj || typeof obj !== "object") obj = {};
+              obj.title = pr.name;
+              obj.name = pr.name;
+              obj.date = new Date().toISOString();
+              pr.inlineData = JSON.stringify(obj, null, 2);
+            }catch(e){ console.warn("Rename sync failed:", e); }
+    save(); 
+  // Ensure each project has a slug
+  (function(){
+    try{
+      for(const p of projects){
+        if(!p.slug){
+          const meta = getProjectMeta(p);
+          p.slug = __uniqueSlug(__slugify(p.name || (meta.title || 'project')), projects, p.id);
+        }
+      }
+      save();
+    }catch(e){}
+  })();
+
+render(projects);
           }
         }
 
@@ -277,6 +367,9 @@ function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
         if(act==='duplicate') duplicateProject(id);
         if(act==='exportOne') exportSingleProject(id);
 
+        if(act==='copylink'){
+          const pr = projects.find(x=>x.id===id); if(pr) await __copyProjectLink(pr);
+        }
         if(act==='delete'){
           const ok = await uiConfirm({ title:'Delete Projectt', message:'Are you sure?' });
           if(ok){
