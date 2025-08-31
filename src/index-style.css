@@ -201,3 +201,48 @@ h3{
 .help-panel ol{ margin: 0; padding-left: 18px; }
 .help-panel li{ margin: 6px 0; }
 
+.toolbar{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+.toolbar > button,
+.toolbar > .btn{
+  flex: 1 1 160px;
+  min-width: 120px;
+}
+
+/* === Toolbar: idealne centrowanie ikony i napisu w przyciskach === */
+.toolbar > button,
+.toolbar > .btn,
+.toolbar > a.btn {
+  display: inline-flex;          /* układ w wierszu */
+  align-items: center;           /* centrowanie w pionie */
+  justify-content: center;       /* centrowanie w poziomie */
+  gap: 8px;                      /* odstęp między ikoną a tekstem */
+  text-align: center;            /* dla pewności */
+  line-height: 1;                /* żeby baseline nie podbijał wysokości */
+  min-height: 40px;              /* spójna wysokość (dopasuj do swojego UI) */
+  white-space: nowrap;           /* bez łamania napisu w dwóch liniach */
+}
+
+/* Ujednolicenie ikon w toolbarze */
+.toolbar > .btn img,
+.toolbar > button img,
+.toolbar > .btn svg,
+.toolbar > button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  display: inline-block;
+}
+
+
+
+
+/* === Toolbar responsive widths (fix) === */
+.toolbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; }
+.toolbar > .btn, .toolbar > button, .toolbar > a.btn{ flex:1 1 180px; min-width:140px; }
+/* Center icon+text inside */
+.toolbar > .btn, .toolbar > button, .toolbar > a.btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; }
