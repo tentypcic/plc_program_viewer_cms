@@ -264,27 +264,27 @@ footer a:hover {
   filter: brightness(1.05);
 }
 
-    .help-panel { position: relative; }
-    .help-panel .lang-switch {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      display: flex;
-      gap: 6px;
-      z-index: 1;
-    }
-    .help-panel .lang-switch button {
-      background: #2f3650;
-      color: #fff;
-      border: 0;
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      line-height: 1;
-    }
-    .help-panel .lang-switch button.is-active {
-      outline: 2px solid #cfd6ea;
-    }
-    .help-panel .lang { display: none; }
-    .help-panel .lang.active { display: block; }
-    .help-panel .lang h3 { margin-right: 90px; }
+.help-panel { position: relative; }
+.help-panel .lang-switch {
+position: absolute;
+top: 12px;
+right: 12px;
+display: flex;
+gap: 6px;
+ z-index: 1;
+}
+.help-panel .lang-switch button {
+background: #2f3650;
+color: #fff;
+border: 0;
+padding: 6px 10px;
+border-radius: 6px;
+cursor: pointer;
+line-height: 1;
+}
+.help-panel .lang-switch button.is-active {
+outline: 2px solid #cfd6ea;
+}
+.help-panel .lang { display: none; }
+.help-panel .lang.active { display: block; }
+.help-panel .lang h3 { margin-right: 90px; }
