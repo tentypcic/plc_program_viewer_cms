@@ -1,6 +1,5 @@
 (function(){
   
-  // === Slug + URL helpers ===
   function __slugify(str){
     const from = "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ";
     const to   = "acelnoszzACELNOSZZ";
@@ -56,7 +55,53 @@
     if(!ok) __copyFallback(url);
     __toast(ok ? 'Link copied: '+url : 'Link ready to copy');
   }
-const LS_KEY = "ppv.projects";
+
+  const LS_KEY = "ppv.projects";
+  
+(function(){
+  try{
+    const sp  = new URLSearchParams(location.search);
+    const b64 = sp.get("inline64");
+    if(!b64) return;
+
+    const pid = sp.get("pid");
+    const snap = JSON.parse(decodeURIComponent(escape(atob(b64)))); // {title,date,menuData}
+
+    const raw = localStorage.getItem(LS_KEY) || "[]";
+    let list; try { list = JSON.parse(raw); } catch { list = []; }
+    if(!Array.isArray(list)) list = [];
+
+    let i = -1;
+    if (pid) i = list.findIndex(p => p && p.id === pid);
+    if (i < 0) i = 0;
+
+    const next = Object.assign({}, list[i] || {
+      id: pid || ((crypto.randomUUID && crypto.randomUUID()) || String(Date.now())),
+      name: snap.title || "Project",
+      description: "",
+      tag: ""
+    }, {
+      name: snap.title || (list[i]?.name) || "Project",
+      inlineData: JSON.stringify({ title: snap.title, date: snap.date, menuData: snap.menuData }, null, 2),
+      date: snap.date
+    });
+
+    if (i < 0 || !list.length) list = [next]; else list[i] = next;
+    localStorage.setItem(LS_KEY, JSON.stringify(list));
+
+    // usuń param z URL, żeby nie stosować dwa razy
+    try{
+      sp.delete("inline64");
+      const clean = location.pathname + (sp.toString() ? ("?" + sp.toString()) : "");
+      history.replaceState(null, "", clean);
+    }catch(_){}
+  }catch(e){
+    console.warn("[PPV] inline64 consume error:", e);
+  }
+})();
+
+  
+  
   let projects = [];
   let clampListenerInstalled = false;
 
@@ -94,12 +139,26 @@ const LS_KEY = "ppv.projects";
       name: p.name || "Project",
       description: p.description || "",
       tag: p.tag || "",
-      inlineData: p.inlineData || ""
+      inlineData: p.inlineData || "",
+      slug: p.slug || undefined,
+      date: p.date || undefined
     };
   }
 
-  
-  // ---- Auto-import helpers ----
+  function __applyInlineDataToProject(p){
+    if (!p) return p;
+    try{
+      if (p.inlineData) {
+        const s = JSON.parse(p.inlineData);
+        if (s && typeof s === "object") {
+          if (s.title) p.name = s.title;
+          if (s.date)  p.date = s.date;
+        }
+      }
+    }catch(_){}
+    return p;
+  }
+
   async function __fetchJsonMaybe(url){
     try{
       const res = await fetch(url, { cache: 'no-store' });
@@ -140,7 +199,6 @@ const LS_KEY = "ppv.projects";
     return out;
   }
 
-  
   async function __convertImportedData(payload){
     const arr = Array.isArray(payload) ? payload : (payload.projects || [])
     const out = []
@@ -150,7 +208,6 @@ const LS_KEY = "ppv.projects";
         inline = { title: p.title || p.name || '', date: p.date || new Date().toISOString(), menuData: p.menuData }
       }
       if(!inline){
-        // if this was read via fetch (src) we handled earlier; for local file import, ignore unknown entries
         continue
       }
       if(typeof inline !== 'string'){
@@ -167,8 +224,8 @@ const LS_KEY = "ppv.projects";
     }
     return out
   }
-async function __tryImportProjectList(){
-    // Only import if there is nothing in LS (or explicitly requested via ?import=...&replace=1)
+
+  async function __tryImportProjectList(){
     const params = new URLSearchParams(location.search);
     const replace = params.get('replace') === '1';
     const importParam = params.get('import'); // one or more URLs separated by comma
@@ -185,7 +242,36 @@ async function __tryImportProjectList(){
     }
     return list;
   }
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
+
+  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
+
+  // === Auto-refresh when viewer updates projects in another tab ===
+  window.addEventListener('storage', (e)=>{
+    try{
+      if(e && e.key === LS_KEY){
+        const raw = localStorage.getItem(LS_KEY) || "[]";
+        let list = JSON.parse(raw);
+        if(!Array.isArray(list)) list = [];
+        projects = list.map(__applyInlineDataToProject);
+        render(projects);
+        __toast && __toast('Zaktualizowano listę projektów');
+      }
+    }catch(_){}
+  });
+
+  // ——— odśwież z bfcache przy powrocie z viewera ———
+  window.addEventListener('pageshow', () => {
+    try{
+      const raw = localStorage.getItem(LS_KEY) || "[]";
+      let list = JSON.parse(raw);
+      if (!Array.isArray(list)) list = [];
+      projects = list.map(__applyInlineDataToProject);
+      render(projects);
+    }catch(_){
+      projects = [];
+      render(projects);
+    }
+  });
 
   function getProjectMeta(p){
     try{
@@ -303,10 +389,8 @@ function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
           const name = await uiPrompt({ title:'Edit the project name', label:'Name:', value: pr.name || 'Project', required:true });
           if(name !== null){
             pr.name = name.trim();
-            
             pr.slug = __uniqueSlug(__slugify(pr.name), projects, pr.id);
 
-            // Propagate title into the project's inlineData used by viewer
             try{
               const raw = pr.inlineData || "";
               let obj = null;
@@ -321,21 +405,22 @@ function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
               obj.date = new Date().toISOString();
               pr.inlineData = JSON.stringify(obj, null, 2);
             }catch(e){ console.warn("Rename sync failed:", e); }
-    save(); 
-  // Ensure each project has a slug
-  (function(){
-    try{
-      for(const p of projects){
-        if(!p.slug){
-          const meta = getProjectMeta(p);
-          p.slug = __uniqueSlug(__slugify(p.name || (meta.title || 'project')), projects, p.id);
-        }
-      }
-      save();
-    }catch(e){}
-  })();
 
-render(projects);
+            save(); 
+
+            (function(){
+              try{
+                for(const p of projects){
+                  if(!p.slug){
+                    const meta = getProjectMeta(p);
+                    p.slug = __uniqueSlug(__slugify(p.name || (meta.title || 'project')), projects, p.id);
+                  }
+                }
+                save();
+              }catch(e){}
+            })();
+
+            render(projects);
           }
         }
 
@@ -466,7 +551,6 @@ render(projects);
     input.click();
   }
 
-  
   function exportJson(){
     const filtered = projects.map(p => {
       const copy = Object.assign({}, p);
@@ -486,7 +570,9 @@ render(projects);
       try{
         const list = JSON.parse(String(ev.target.result||""));
         if(!Array.isArray(list)) throw 0;
-        projects = list.map(normalize); save(); render(projects);
+        projects = list.map(normalize); 
+        save(); 
+        render(projects);
       }catch(_){
         alert("Invalid file format.");
       }
@@ -494,13 +580,12 @@ render(projects);
     reader.readAsText(file);
   }
 
-  
-function openProjectById(id){
-  const p = projects.find(x=>x.id===id); if(!p) return;
-  const token = makeSessionToken(p.inlineData || getDefaultProjectPayload());
-  // pass pid so viewer can sync card back
-  location.href = "./viewer.html?project=" + encodeURIComponent(token) + "&pid=" + encodeURIComponent(p.id);
-}
+  function openProjectById(id){
+    const p = projects.find(x=>x.id===id); if(!p) return;
+    const token = makeSessionToken(p.inlineData || getDefaultProjectPayload());
+    // pass pid so viewer can sync card back
+    location.href = "./viewer.html?project=" + encodeURIComponent(token) + "&pid=" + encodeURIComponent(p.id);
+  }
 
   function exportSingleProject(id){
     const p = projects.find(x=>x.id===id); if(!p) return;
@@ -521,30 +606,23 @@ function openProjectById(id){
     projects.unshift(copy); save(); render(projects);
   }
 
-  
-function openDefault(){
-  // Build a brand-new project entry from the default payload,
-  // add it to the list, save, and open viewer with pid=<new id>
-  const payload = getDefaultProjectPayload();
-  const initial = JSON.parse(payload);
-  const title   = initial.title || "New project";
-  const proj = normalize({
-    name: title,
-    description: "Empty template",
-    tag: "",
-    inlineData: payload
-  });
-  projects.unshift(proj);
-  save();
-  // open with pid so edits sync back to this card
-  const token = makeSessionToken(proj.inlineData);
-  location.href = "./viewer.html?project=" + encodeURIComponent(token) + "&pid=" + encodeURIComponent(proj.id);
-}
-
+  function openDefault(){
+    const payload = getDefaultProjectPayload();
+    const initial = JSON.parse(payload);
+    const title   = initial.title || "New project";
+    const proj = normalize({
+      name: title,
+      description: "Empty template",
+      tag: "",
+      inlineData: payload
+    });
+    projects.unshift(proj);
+    save();
+    const token = makeSessionToken(proj.inlineData);
+    location.href = "./viewer.html?project=" + encodeURIComponent(token) + "&pid=" + encodeURIComponent(proj.id);
+  }
 
   // Init (with optional auto-import from projects.json or ?import=URL)
-  
-  // --- UI: Import JSON from local file (works on file://)
   (function(){
     const btn = document.getElementById("btnImportJson");
     const input = document.getElementById("fileImport");
@@ -558,11 +636,11 @@ function openDefault(){
           const json = JSON.parse(txt);
           const imported = await __convertImportedData(json);
           if(!imported.length){ alert("Brak rozpoznanych projektów w pliku."); input.value=""; return; }
-          const replace = confirm("Zastąpić obecną listę projektów?\\nOK = Zastąp, Anuluj = Dodaj do listy");
+          const replace = confirm("Zastąpić obecną listę projektów?\nOK = Zastąp, Anuluj = Dodaj do listy");
           if(replace) projects = [];
           const existingIds = new Set(projects.map(x=>x.id));
           for(const p of imported){
-            if(!p.id || existingIds.has(p.id)) p.id = uuid();
+            if(!p.id || existingIds.has(p.id)) p.id = __uuidv4(); // <-- poprawka
             projects.push(p);
           }
           save();
@@ -575,14 +653,14 @@ function openDefault(){
       });
     }
   })();
-(async function(){
+
+  (async function(){
     const fromLs = localStorage.getItem(LS_KEY);
     projects = fromLs ? JSON.parse(fromLs) : [];
     const params = new URLSearchParams(location.search);
     const shouldReplace = params.get('replace') === '1';
 
     if(!Array.isArray(projects)) projects = [];
-
     if(shouldReplace){ projects = []; }
 
     if(projects.length === 0){
@@ -593,7 +671,7 @@ function openDefault(){
         render(projects);
         return;
       }
-      // fallback to single default
+
       projects = [ normalize({
         name: "Empty template",
         description: "Default empty project – click Open",
@@ -602,11 +680,12 @@ function openDefault(){
       }) ];
       save();
     }
+
+    projects = projects.map(__applyInlineDataToProject);
     render(projects);
   })();
 
-
- window.uiPrompt = function ({ title="Enter value", label="Value:", value="", placeholder="", okText="OK", cancelText="Cancel", required=false } = {}) {
+  window.uiPrompt = function ({ title="Enter value", label="Value:", value="", placeholder="", okText="OK", cancelText="Cancel", required=false } = {}) {
     return new Promise((resolve)=>{
       const ov = document.getElementById('idxOverlay');
       const ttl = document.getElementById('idxTitle');
@@ -681,22 +760,48 @@ function openDefault(){
       ov.style.display = "flex";
     });
   };
-  
+
   // --- Toggle instruction panel on index page ---
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('helpBtn');
-  const panel = document.getElementById('helpPanel');
-  if (!btn || !panel) return;
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('helpBtn');
+    const panel = document.getElementById('helpPanel');
+    if (!btn || !panel) return;
 
-  const setOpen = (open) => {
-    panel.hidden = !open;
-    btn.setAttribute('aria-expanded', String(open));
-    btn.textContent = open ? '📘 Hide Help' : '📘 Help';
-    if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      btn.textContent = open ? '📘 Hide instruction' : '📘 Instruction';
+      if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
-  let opened = false;
-  setOpen(opened);
-  btn.addEventListener('click', () => { opened = !opened; setOpen(opened); });
-});
+    let opened = false;
+    setOpen(opened);
+    btn.addEventListener('click', () => { opened = !opened; setOpen(opened); });
+  });
+
 })();
+
+  (function(){
+    function applyLang(lang){
+      // zapisz wybór
+      localStorage.setItem('idx_lang', lang);
+      // przełącz widoczność
+      document.querySelectorAll('#helpPanel .lang').forEach(el => el.classList.remove('active'));
+      const active = document.querySelector('#helpPanel .lang-' + lang);
+      if (active) active.classList.add('active');
+      // podświetl przycisk
+      document.getElementById('btnPL').classList.toggle('is-active', lang === 'pl');
+      document.getElementById('btnEN').classList.toggle('is-active', lang === 'en');
+    }
+
+    // publiczne API na wszelki wypadek
+    window.setLang = applyLang;
+
+    // podpinamy przyciski po załadowaniu DOM
+    window.addEventListener('DOMContentLoaded', function(){
+      const saved = localStorage.getItem('idx_lang') || 'en'; // domyślnie EN
+      document.getElementById('btnPL').addEventListener('click', () => applyLang('pl'));
+      document.getElementById('btnEN').addEventListener('click', () => applyLang('en'));
+      applyLang(saved);
+    });
+  })();
