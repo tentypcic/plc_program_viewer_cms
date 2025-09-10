@@ -1,7 +1,7 @@
 # PLC Programme Viewer CMS
 
 <p align="center">
-  <img src="images/viewer_0.png" alt="PLC Programme Viewer screenshot" width="600">
+  <img src="screenshot.png" alt="PLC Programme Viewer screenshot" width="600">
 </p>
 
 <p align="center">
@@ -81,7 +81,7 @@ All data is saved **locally** in the browser via `localStorage` or exported/impo
 
 In order for the block to have the correct style, you need to give it the appropriate tag in the name, e.g., **`Block [FC...]`** based on the example, the block we are adding has the Function block style.
 
-| Icon / Tag | Meaning              |Style|
+| Tag        | Meaning              |Style                          |
 |------------|----------------------|-------------------------------|
 | `[OB]`     | Organization block   |<img src="images/ob.png">      |
 | `[FB]`     | Function block       |<img src="images/fb.png">      |
@@ -89,7 +89,7 @@ In order for the block to have the correct style, you need to give it the approp
 | `[DB]`     | Data block           |<img src="images/db.png">      |
 | `Tags`     | PLC tag table        |<img src="images/plc_tags.png">|
 | `UDT`      | User-defined data    |<img src="images/udt.png">     |
-| `F-Block`  | Safety block (yellow)|<img src="images/f-ob.png">    |
+| `F-Block`  | Safety block (yellow)|<img src="images/f_ob.png">    |
 
 
 ---
@@ -114,7 +114,7 @@ Right-click a block → **Print…** → choose *Microsoft Print to PDF* → sav
 
 - Click **✏️ Edit Mode**  
 - Press **➕ Add Block**  
-- Fill in block name + PDF path (e.g. `pdf/Main_OB1.pdf`)  
+- Fill in block name with `Tag` (e.g Main [OB1]) + PDF path (e.g. `pdf/Main_OB1.pdf`)  
 - Optionally mark **F-Block**  
 
 <p align="center">
