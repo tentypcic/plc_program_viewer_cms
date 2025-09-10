@@ -1,4 +1,3 @@
-// ===== Core state =====
 let editMode = false;
 let editTarget = null;
 
@@ -9,49 +8,178 @@ let menuData = [
 ];
 const defaultMenuData = JSON.parse(JSON.stringify(menuData));
 
-
-
-// === Sync back to index.html (project list) ===
 const __LS_LIST_KEY = "ppv.projects";
 let __PID = new URLSearchParams(location.search).get("pid") || null;
 const __slugParam = new URLSearchParams(location.search).get("slug") || null;
-if(!__PID && __slugParam){
-  try{
+if (!__PID && __slugParam) {
+  try {
     const list = JSON.parse(localStorage.getItem(__LS_LIST_KEY) || "[]");
-    const found = list.find(p=>p && p.slug === __slugParam);
-    if(found) __PID = found.id;
-  }catch(_){}
+    const found = list.find(p => p && p.slug === __slugParam);
+    if (found) __PID = found.id;
+  } catch (_){}
 }
 
 function __snapshot() {
-  const title = localStorage.getItem("pageTitle") 
-             || (typeof document !== "undefined" && document.getElementById("titleText") ? document.getElementById("titleText").textContent : "Project");
+  const title = localStorage.getItem("pageTitle")
+           || (typeof document !== "undefined" && document.getElementById("titleText")
+               ? document.getElementById("titleText").textContent
+               : "Project");
   const date  = localStorage.getItem("pageEdited") || new Date().toISOString();
   return { title, date, menuData };
 }
 
+(function(){
+  if (typeof document === "undefined") return;
+
+  // Tworzymy tylko element, bez stylu inline
+  const el = document.createElement('div');
+  el.className = 'ppv-toast';
+  el.id = 'ppvToast';
+  el.setAttribute('role','status');
+  el.setAttribute('aria-live','polite');
+  document.body && document.body.appendChild(el);
+})();
+
+
+function flashSaved(msg){
+  try{
+    const el = document.getElementById('ppvToast');
+    if(!el) return;
+    el.textContent = msg || 'Changes saved ✅';
+    el.classList.add('show');
+    clearTimeout(flashSaved.__t);
+    flashSaved.__t = setTimeout(()=>{ el.classList.remove('show'); }, 1400);
+  }catch(_){ /* no-op */ }
+}
+
+(function(){
+  if (typeof document === "undefined") return;
+
+  function ensureBackLink(){
+    let a = document.querySelector("a.back-link");
+    if(!a){
+      const hdr = document.querySelector("header") || document.body;
+      a = document.createElement("a");
+      a.className = "back-link";
+      a.textContent = "← Projects";
+      a.href = "index.html";
+      a.style.cssText = "position:fixed;left:16px;top:12px;text-decoration:none;font:600 14px system-ui;z-index:999;";
+      hdr.insertBefore(a, hdr.firstChild);
+    }
+    return a;
+  }
+
+  function updateBackHref(){
+    try{
+      const a = ensureBackLink();
+      const url = new URL(a.getAttribute("href") || "index.html", location.href);
+      url.searchParams.delete("inline64");
+
+      const snap = (function(){
+        const title = localStorage.getItem("pageTitle")
+          || (document.getElementById("titleText")?.textContent || "Project");
+        const date  = localStorage.getItem("pageEdited") || new Date().toISOString();
+        return { title, date, menuData };
+      })();
+
+      const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(snap))));
+      url.searchParams.set("inline64", b64);
+
+      const usp = new URLSearchParams(location.search);
+      const pid = usp.get("pid");
+      if (pid) url.searchParams.set("pid", pid);
+
+      a.href = url.pathname + url.search;
+    }catch(_){}
+  }
+
+  document.addEventListener("DOMContentLoaded", updateBackHref);
+
+  const __oldSetEditedNow = window.setEditedNow;
+  window.setEditedNow = function(){
+    try{ __oldSetEditedNow && __oldSetEditedNow(); }catch(_){}
+    updateBackHref();
+  };
+})();
+
+
 function __persistToIndex() {
   try {
-    if (!__PID) return; // viewer opened standalone - skip syncing
     const raw = localStorage.getItem(__LS_LIST_KEY) || "[]";
-    let list;
-    try { list = JSON.parse(raw); } catch { list = []; }
-    const i = list.findIndex(p => p && (p.id === __PID));
-    if (i < 0) return;
+    let list; try { list = JSON.parse(raw); } catch { list = []; }
+    if (!Array.isArray(list) || !list.length) return;
 
-    const snap = __snapshot();
-    // update object used on index
+    const usp  = new URLSearchParams(location.search);
+    const pid  = usp.get("pid");
+    const slug = usp.get("slug");
+
+    const title = localStorage.getItem("pageTitle")
+               || (document.getElementById("titleText")?.textContent || "Project");
+    const date  = localStorage.getItem("pageEdited") || new Date().toISOString();
+    const snap  = { title, date, menuData };
+
+    let i = -1;
+    if (pid) i = list.findIndex(p => p && p.id === pid);
+    if (i < 0 && slug) i = list.findIndex(p => p && p.slug === slug);
+    if (i < 0) {
+      const t = String(title).toLowerCase();
+      i = list.findIndex(p => {
+        try {
+          const obj = p && p.inlineData ? JSON.parse(p.inlineData) : null;
+          const t2  = (obj && (obj.title || obj.name)) || p.name || "";
+          return String(t2).toLowerCase() === t;
+        } catch { return false; }
+      });
+    }
+    if (i < 0) i = 0;
+
     list[i] = Object.assign({}, list[i], {
       name: snap.title,
       inlineData: JSON.stringify(snap, null, 2)
     });
     localStorage.setItem(__LS_LIST_KEY, JSON.stringify(list));
   } catch (e) {
-    console.warn("Persist error:", e);
+    console.warn("[PPV] Persist error:", e);
   }
 }
 
-// ===== Last-edit badge helpers (date + HH:MM) =====
+function __applyInlineDataToProject(p){
+  if (!p) return p;
+  try{
+    if (p.inlineData) {
+      const s = JSON.parse(p.inlineData);
+      if (s && typeof s === "object") {
+        if (s.title) p.name = s.title;
+        if (s.date)  p.date = s.date;
+      }
+    }
+  }catch(_){}
+  return p;
+}
+
+try{
+  const raw = localStorage.getItem(__LS_LIST_KEY) || "[]";
+  let list; try { list = JSON.parse(raw); } catch { list = []; }
+  if (Array.isArray(list)) {
+    list = list.map(__applyInlineDataToProject);
+    localStorage.setItem(__LS_LIST_KEY, JSON.stringify(list));
+  }
+}catch(e){ console.warn("[PPV] inlineData normalize error:", e); }
+
+let __PROJECT_PARAM = null;
+try { __PROJECT_PARAM = new URLSearchParams(location.search).get("project") || null; } catch(_) {}
+
+function __persistToSession(){
+  try{
+    if(!__PROJECT_PARAM) return;
+    if(!__PROJECT_PARAM.startsWith("ls:")) return;
+    const key = __PROJECT_PARAM.slice(3);
+    const snap = __snapshot();
+    const payload = { title: snap.title, date: snap.date, menuData: snap.menuData };
+    sessionStorage.setItem(key, JSON.stringify(payload));
+  }catch(e){ console.warn("Session persist error:", e); }
+}
+
 function __fmtYMDHM(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
   const hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0');
@@ -70,17 +198,19 @@ function updateDateBadge(){
 }
 function setEditedNow(){
   const iso = new Date().toISOString();
-  localStorage.setItem("pageEdited", iso);
-  updateDateBadge();
-  __persistToIndex();
+  try { localStorage.setItem("pageEdited", iso); } catch(_){}
+  try { updateDateBadge(); } catch(_){}
+  try { __persistToIndex(); } catch(_){}
+  try { __persistToSession(); } catch(_){}
+  try { flashSaved(); } catch(_){}
 }
-// Back-compat alias used earlier
+
 function setDateChip(iso){
   if (iso) localStorage.setItem("pageEdited", iso);
   updateDateBadge();
 }
 
-// ===== Restore persisted state =====
+
 const savedData = localStorage.getItem("menuData");
 if (savedData) {
   try {
@@ -94,7 +224,7 @@ if (savedTitle) {
 }
 updateDateBadge();
 
-// ===== Loader from ?project= (supports array or {menuData,title/name,date}) =====
+
 function tryLoadFromSession(param){
   if(param && param.startsWith("ls:")){
     const key = param.slice(3);
@@ -124,17 +254,20 @@ async function loadProjectJson(url){ const res=await fetch(url); if(!res.ok) thr
     if (newMenu) {
       menuData.length = 0; for (const it of newMenu) menuData.push(it);
       localStorage.setItem("menuData", JSON.stringify(menuData));
-      __persistToIndex();
+
       if (data.title || data.name) {
         const titleEl = document.getElementById("titleText");
         const newTitle = data.title || data.name;
         if (titleEl) titleEl.textContent = newTitle;
         localStorage.setItem("pageTitle", newTitle);
       }
-      // Treat incoming date as "last edit"
       if (data.date) { localStorage.setItem("pageEdited", data.date); }
       updateDateBadge();
+
       __persistToIndex();
+      __persistToSession();
+      flashSaved();
+
       if (typeof renderMenu === "function") renderMenu();
     }
   }catch(e){ console.error(e); alert("Błąd wczytywania projektu: " + e.message); }
@@ -144,7 +277,7 @@ async function loadProjectJson(url){ const res=await fetch(url); if(!res.ok) thr
 const titleBar = document.querySelector(".title") || document.querySelector("header p");
 if (titleBar) titleBar.addEventListener("click", (e) => {
   if (e.target.id === "editTitleBtn") return;
-  document.getElementById("pdfViewer").src = "src/default.html";
+  document.getElementById("pdfViewer").src = "default.html";
   localStorage.removeItem("activePdf");
   document.querySelectorAll(".group-label.active").forEach(el => el.classList.remove("active"));
 });
@@ -207,6 +340,8 @@ function buildItem(item, parentList, sectionTitle = ""){
       setEditedNow();
       localStorage.setItem("menuData", JSON.stringify(menuData));
       __persistToIndex();
+      __persistToSession();
+      flashSaved();
       renderMenu();
     };
     controls.appendChild(editBtn); controls.appendChild(delBtn); row.appendChild(controls);
@@ -216,7 +351,8 @@ function buildItem(item, parentList, sectionTitle = ""){
 
   if (item.children){
     const submenu = document.createElement("ul"); submenu.classList.add("submenu");
-    item.children.forEach(child => submenu.appendChild(buildItem(child, item.children)));
+    // ⬇️ ważne: przekazujemy sectionTitle, żeby ikony się zgadzały
+    item.children.forEach(child => submenu.appendChild(buildItem(child, item.children, sectionTitle)));
     li.appendChild(submenu);
     li.addEventListener("click", e => {
       if (e.target === li || e.target === row || e.target === label || e.target === arrow) {
@@ -275,6 +411,8 @@ function setupDialogs(){
       setEditedNow();
       localStorage.setItem("menuData", JSON.stringify(menuData));
       __persistToIndex();
+      __persistToSession();
+      flashSaved();
       renderMenu();
       highlightLastActive();
     }
@@ -298,7 +436,6 @@ function highlightLastActive(){
   }
 }
 
-
 const toggleBtn = document.getElementById("toggleEdit");
 if (toggleBtn) toggleBtn.onclick = () => {
   editMode = !editMode;
@@ -306,7 +443,6 @@ if (toggleBtn) toggleBtn.onclick = () => {
   ids.forEach(id=>{ const el = document.getElementById(id); if(el){ el.style.display = editMode ? "inline" : "none"; } });
   renderMenu();
 };
-
 
 // ===== Export / Import =====
 document.getElementById("saveJson").onclick = () => {
@@ -325,6 +461,8 @@ document.getElementById("reset").onclick = () => {
   menuData.push(...JSON.parse(JSON.stringify(defaultMenuData)));
   localStorage.removeItem("menuData");
   __persistToIndex();
+  __persistToSession();
+  flashSaved();
   renderMenu();
 };
 
@@ -423,11 +561,15 @@ document.getElementById("confirmAdd").onclick = () => {
   document.getElementById("overlay").style.display = "none";
   setEditedNow();
   localStorage.setItem("menuData", JSON.stringify(menuData));
-      __persistToIndex();
+  __persistToIndex();
+  __persistToSession();
+  flashSaved();
   renderMenu();
 };
 
-document.getElementById("cancelAdd").onclick = () => { document.getElementById("overlay").style.display = "none"; };
+document.getElementById("cancelAdd").onclick = () => {
+  document.getElementById("overlay").style.display = "none";
+};
 
 // --- Help button -> show default help page instead of current PDF
 (function(){
@@ -438,7 +580,7 @@ document.getElementById("cancelAdd").onclick = () => { document.getElementById("
     e.stopPropagation();
 
     const iframe = document.getElementById('pdfViewer');
-    if (iframe) iframe.src = 'src/default.html';
+    if (iframe) iframe.src = 'default.html';
 
     try { localStorage.removeItem('activePdf'); } catch (_) {}
     document.querySelectorAll('.group-label.active')
