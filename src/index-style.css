@@ -23,13 +23,6 @@ header{
 header h1{ margin:0; font-size:18px; font-weight:700; letter-spacing:.3px }
 header p{ margin:6px 0 0; color:#d6dcff; font-size:12px }
 
-footer{
-  padding:10px 0 16px;
-  text-align:center;
-  color:#7b86b3;
-  background:#f0f0f0 ;
-  border:0;
-}
 
 .wrap{ width:min(1280px,96vw); margin:16px auto; flex:1; display:flex; flex-direction:column; gap:12px }
 .toolbar{ display:flex; gap:10px; flex-wrap:wrap }
@@ -217,17 +210,16 @@ h3{
 .toolbar > button,
 .toolbar > .btn,
 .toolbar > a.btn {
-  display: inline-flex;          /* układ w wierszu */
-  align-items: center;           /* centrowanie w pionie */
-  justify-content: center;       /* centrowanie w poziomie */
-  gap: 8px;                      /* odstęp między ikoną a tekstem */
-  text-align: center;            /* dla pewności */
-  line-height: 1;                /* żeby baseline nie podbijał wysokości */
-  min-height: 40px;              /* spójna wysokość (dopasuj do swojego UI) */
-  white-space: nowrap;           /* bez łamania napisu w dwóch liniach */
+  display: inline-flex;    
+  align-items: center;         
+  justify-content: center;       
+  gap: 8px;                      
+  text-align: center;           
+  line-height: 1;               
+  min-height: 40px;            
+  white-space: nowrap;           
 }
 
-/* Ujednolicenie ikon w toolbarze */
 .toolbar > .btn img,
 .toolbar > button img,
 .toolbar > .btn svg,
@@ -238,11 +230,61 @@ h3{
   display: inline-block;
 }
 
-
-
-
-/* === Toolbar responsive widths (fix) === */
 .toolbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; }
 .toolbar > .btn, .toolbar > button, .toolbar > a.btn{ flex:1 1 180px; min-width:140px; }
-/* Center icon+text inside */
 .toolbar > .btn, .toolbar > button, .toolbar > a.btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+
+
+footer{
+  padding:10px 0 16px;
+  text-align:center;
+  color:#7b86b3;
+  background:#f0f0f0 ;
+  border:0;
+}
+
+footer a {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s ease;
+}
+
+footer a:hover {
+  color: #4c8dff;
+}
+
+.btn, .link, .kebab {
+  transition: transform 0.15s ease, filter 0.15s ease;
+  backface-visibility: hidden;  
+  transform: translateZ(0);      
+}
+
+.btn:hover, .link:hover, .kebab:hover {
+  transform: scale(1.05);
+  filter: brightness(1.05);
+}
+
+    .help-panel { position: relative; }
+    .help-panel .lang-switch {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+      z-index: 1;
+    }
+    .help-panel .lang-switch button {
+      background: #2f3650;
+      color: #fff;
+      border: 0;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .help-panel .lang-switch button.is-active {
+      outline: 2px solid #cfd6ea;
+    }
+    .help-panel .lang { display: none; }
+    .help-panel .lang.active { display: block; }
+    .help-panel .lang h3 { margin-right: 90px; }
