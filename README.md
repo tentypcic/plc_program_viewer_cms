@@ -126,8 +126,7 @@ Right-click a block → **Print…** → choose *Microsoft Print to PDF* → sav
 
 ## 🧑‍💻 Author
 
-Created by [tentypcic](https://github.com/tentypcic)  
-© 2025 – Free for personal and commercial use under MIT license  
+Created by [tentypcic](https://github.com/tentypcic)  © 2025
 
 ---
 
