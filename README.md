@@ -1,10 +1,11 @@
 # PLC Programme Viewer CMS
 
 <p align="center">
-  <img src="/screenshot.png">
+  <img src="images/viewer_0.png" alt="PLC Programme Viewer screenshot" width="600">
 </p>
+
 <p align="center">
-	Project code in pure HTML + CSS + JS
+	Project in pure **HTML + CSS + JS** (no backend)  
 	<br />
 	<a href="https://tentypcic.github.io/plc_program_viewer_cms/">View demo</a>
 	·
@@ -15,65 +16,121 @@
 
 ## 🧠 About The Project
 
-A lightweight, in-browser CMS for organizing and displaying PLC program documentation (PDFs) exported from Siemens TIA Portal.
+**PLC Programme Viewer CMS** is a lightweight, browser-based tool for managing and viewing Siemens TIA Portal program documentation.  
 
-This template allows engineers to structure, edit, and visualize automation projects — directly in the browser, without a backend.
+It helps engineers **export blocks as PDFs, organize them into trees, and review them directly in the browser** – all without installing additional software or servers.  
+
+All data is saved **locally** in the browser via `localStorage` or exported/imported as `.json` files.
 
 ---
 
 ## 🛠 Features
 
-- 📁 Add and organize **groups** and **program blocks**
-- ✏️ Inline editing of names, titles, and links
-- 📄 View **PDF files** within embedded viewer (e.g. OB/FB/FC/DB documentation)
-- 💾 Save and import project structure as JSON
-- 🔁 Restore default template
-- 🧠 No backend required – works offline using `localStorage`
+- 📁 **Project list manager**
+  - Add, rename, duplicate, delete, or export/import projects (`projects.json`)
+  - Quick search by name, description, or date
+  - Pinned projects support (priority at the top)
+
+- 🧱 **Viewer**
+  - Organize blocks into **groups** and **subgroups**
+  - Add/edit **OB / FB / FC / DB / UDT / Tags**
+  - Optional **F-Blocks** with yellow icons
+  - Inline editing of names and links
+  - Embedded **PDF viewer** (`iframe`)
+  - Reset to default template
+
+- 💾 **Persistence**
+  - Automatic saving to `localStorage`
+  - Export/import single project or full list as JSON
+
+- 🌍 **Instructions panel**
+  - Built-in multilingual guide (PL / EN)
+  - Step-by-step screenshots on exporting blocks and adding them to the project tree
+
+- 🧠 **No backend required** – works fully offline
 
 ---
 
-## 🧩 Structure
+## 📂 Project Structure
 
-The CMS consists of:
-
-- A sidebar menu for navigation
-- PDF viewer pane (embedded `<iframe>`)
-- JSON-based structure storage
-- Title editor with persistent state
-- Dialogs for adding blocks and groups dynamically
+- **`index.html`** – Project list (add, search, manage, import/export)  
+- **`viewer.html`** – Project viewer (tree + PDF preview + edit mode)  
+- **`default.html`** – Instruction page (multilingual)  
+- **`404.html`** – Redirect / slug handler for GitHub Pages  
+- **`src/*.js`** – Application logic (`index-app.js`, `viewer-app.js`)  
+- **`src/*.css`** – Styling (`index-style.css`, `viewer-style.css`)  
+- **`images/`** – Icons and screenshots for help  
 
 ---
 
 ## 🚀 Getting Started
 
 1. Clone or download this repository  
-2. Open `index.html` in any modern browser  
-3. Use the `Edit Mode` button to unlock full functionality  
+2. Open `index.html` in a modern browser  
+3. Use the toolbar to:
+   - ➕ Add a new project  
+   - 📂 Import/export `projects.json`  
+   - 🧱 Open empty template  
 
-> All data is saved locally in your browser (`localStorage`) – no server needed.
+> ⚡ Changes are **saved locally** in your browser.  
+> To share or back up work, export as `.json` and re-import later.
 
 ---
 
-## 📁 File types
+## 📄 File Types
 
-| Icon           | Meaning              |
-|----------------|----------------------|
-| `[OB]`         | Organization block   |
-| `[FB]`         | Function block       |
-| `[FC]`         | Function             |
-| `[DB]`         | Data block           |
-| `Tags`         | PLC tag table        |
-| `UDT`          | PLC data types       |
+In order for the block to have the correct style, you need to give it the appropriate tag in the name, e.g., **`Block [FC...]`** based on the example, the block we are adding has the Function block style.
+
+| Icon / Tag | Meaning              |Style|
+|------------|----------------------|-------------------------------|
+| `[OB]`     | Organization block   |<img src="images/ob.png">      |
+| `[FB]`     | Function block       |<img src="images/fb.png">      |
+| `[FC]`     | Function             |<img src="images/fc.png">      |
+| `[DB]`     | Data block           |<img src="images/db.png">      |
+| `Tags`     | PLC tag table        |<img src="images/plc_tags.png">|
+| `UDT`      | User-defined data    |<img src="images/udt.png">     |
+| `F-Block`  | Safety block (yellow)|<img src="images/f-ob.png">    |
+
+
+---
+
+## 📖 Instruction (Quick Preview)
+
+### 1. Exporting blocks from TIA Portal
+<p align="center">
+  <img src="images/Tree_TIA.png" alt="TIA Portal block tree" width="320">
+  <img src="images/print.png" alt="Print to PDF" width="320">
+</p>
+
+Right-click a block → **Print…** → choose *Microsoft Print to PDF* → save with block name.  
+
+---
+
+### 2. Adding blocks to the project tree
+<p align="center">
+  <img src="images/viewer_0.png" alt="Main menu" width="320">
+  <img src="images/viewer_1.png" alt="Edit mode menu" width="320">
+</p>
+
+- Click **✏️ Edit Mode**  
+- Press **➕ Add Block**  
+- Fill in block name + PDF path (e.g. `pdf/Main_OB1.pdf`)  
+- Optionally mark **F-Block**  
+
+<p align="center">
+  <img src="images/add_block.png" alt="Add block window" width="320">
+  <img src="images/viewer_2.png" alt="Block added" width="320">
+</p>
 
 ---
 
 ## 🧑‍💻 Author
 
 Created by [tentypcic](https://github.com/tentypcic)  
-© 2025 – Free for personal and commercial use under MIT license
+© 2025 – Free for personal and commercial use under MIT license  
 
 ---
 
 ## 📄 License
 
-MIT License
+Distributed under the **MIT License**.  
