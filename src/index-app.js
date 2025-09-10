@@ -783,21 +783,15 @@
 
   (function(){
     function applyLang(lang){
-      // zapisz wybór
       localStorage.setItem('idx_lang', lang);
-      // przełącz widoczność
       document.querySelectorAll('#helpPanel .lang').forEach(el => el.classList.remove('active'));
       const active = document.querySelector('#helpPanel .lang-' + lang);
       if (active) active.classList.add('active');
-      // podświetl przycisk
       document.getElementById('btnPL').classList.toggle('is-active', lang === 'pl');
       document.getElementById('btnEN').classList.toggle('is-active', lang === 'en');
     }
 
-    // publiczne API na wszelki wypadek
     window.setLang = applyLang;
-
-    // podpinamy przyciski po załadowaniu DOM
     window.addEventListener('DOMContentLoaded', function(){
       const saved = localStorage.getItem('idx_lang') || 'en'; // domyślnie EN
       document.getElementById('btnPL').addEventListener('click', () => applyLang('pl'));
