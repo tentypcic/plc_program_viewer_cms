@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Instruction / Instrukcja</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg:#f0f0f0;
+      --panel:#2f3650;
+      --text:#1a2442;
+    }
+    body {
+      font-family: Arial, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+      padding: 28px; margin:0; background: var(--bg); color: var(--text);
+    }
+
+	.container { max-width: 1000px; margin-left: 90px; }
+	@media (max-width: 1100px) { .container { margin-left: 0; } }
+
+    h2 {margin:0 0 20px;font-size:24px;text-align:left}
+    h3 {margin:0;font-size:18px;cursor:pointer;user-select:none}
+    p {margin:6px 0 10px; line-height:1.5}
+
+    .card {
+      background:#fff; border:1px solid #bfc6da; border-radius:12px;
+      padding:14px 16px; box-shadow:0 4px 16px rgba(0,0,0,.06);
+      margin:14px 0;
+    }
+
+    .grid {display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:8px}
+    figure {margin:0; background:#fff; border:1px solid #e5e8f5; border-radius:10px; padding:8px}
+    img {max-width:100%; height:auto; display:block; border-radius:6px}
+    figcaption {font-size:12px; color:#56607b; margin-top:6px}
+    .step {font-weight:700}
+    ul {margin:6px 0 8px 18px}
+    code {background:#eef1fb; padding:1px 6px; border-radius:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+
+    .content { display: none; margin-top: 10px; }
+    .card.active .content { display: block; }
+
+    .card h3::after {
+      content: " ▼";
+      font-size: 14px;
+      color: #666;
+      transition: transform 0.2s;
+    }
+    .card.active h3::after {
+      transform: rotate(-90deg);
+      display: inline-block;
+    }
+
+    .lang { display: none; }
+    .lang.active { display: block; }
+
+    .lang-switch {
+      text-align: right;
+      margin-bottom: 20px;
+    }
+    .lang-switch button {
+      background: var(--panel);
+      color:#fff;
+      border:none;
+      padding:6px 12px;
+      margin-left:6px;
+      border-radius:6px;
+      cursor:pointer;
+    }
+    .lang-switch button:hover {
+      background:#3f4865;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="lang-switch">
+      <button onclick="setLang('pl')">PL</button>
+      <button onclick="setLang('en')">EN</button>
+    </div>
+
+    <!-- PL version -->
+    <div class="lang lang-pl">
+      <div class="card">
+        <h3>Eksport bloków z TIA Portal do PDF</h3>
+        <div class="content">
+          <p>
+            W TIA Portal kliknij prawym przyciskiem na wybrany blok w drzewie projektu i wybierz <strong>Print…</strong>.
+            W oknie wydruku ustaw drukarkę na <em>Microsoft Print to PDF</em>, po wybraniu ustawień pliku kliknij Print, a następnie zapisz plik PDF.
+            Nazwa pliku powinna odpowiadać nazwie bloku (np. <code>Main_OB1.pdf</code>).
+          </p>
+          <div class="grid">
+            <figure>
+              <img src="images/Tree_TIA.png" alt="Drzewo bloków w TIA Portal">
+              <figcaption>Drzewo bloków – wybór bloku do eksportu.</figcaption>
+            </figure>
+            <figure>
+              <img src="images/print.png" alt="Okno drukowania do PDF w TIA Portal">
+              <figcaption>Eksport do PDF przez „Microsoft Print to PDF”.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Dodawanie bloku do drzewka projektu</h3>
+        <div class="content">
+          <p>
+            W menu mamy podstawowe 3 przyciski, kliknij <strong>Edit Mode</strong> aby rozwinąć menu, następnie wybierz <strong>Add Block</strong>, uzupełnij <em>Block Name</em>, wskaż ścieżkę do PDF
+            (np. <code>pdf/main.pdf</code>), a następnie zatwierdź. Opcjonalnie możesz zaznaczyć
+            <em>Create F-Block (yellow icon)</em> dla bloków bezpieczeństwa.
+          </p>
+          <div class="grid">
+            <figure>
+              <img src="images/viewer_0.png" alt="Viewer – panel główny">
+              <figcaption>Podstawowe przyciski menu.</figcaption>
+            </figure>
+            <figure>
+              <img src="images/viewer_1.png" alt="Viewer – drzewko bloków">
+              <figcaption>Wszystkie dostępne przyciski w trybie Edit Mode.</figcaption>
+            </figure>
+          </div>
+          <div class="grid">
+            <figure>
+              <img src="images/add_block.png" alt="Dodawanie bloku">
+              <figcaption>Okno dodawania bloku.</figcaption>
+            </figure>
+            <figure>
+              <img src="images/viewer_2.png" alt="Zatwierdzenie dodania bloku">
+              <figcaption>Nowy blok w drzewie projektu.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EN version -->
+    <div class="lang lang-en">
+      <div class="card">
+        <h3>Exporting blocks from TIA Portal to PDF</h3>
+        <div class="content">
+          <p>
+            In TIA Portal, right-click on the selected block in the project tree and choose <strong>Print…</strong>.
+            In the print window set the printer to <em>Microsoft Print to PDF</em>. After selecting the file settings, click Print, and then save the PDF file.
+            The file name should match the block name (e.g. <code>Main_OB1.pdf</code>).
+          </p>
+          <div class="grid">
+            <figure>
+              <img src="images/Tree_TIA.png" alt="Block tree in TIA Portal">
+              <figcaption>Block tree – selecting a block for export.</figcaption>
+            </figure>
+            <figure>
+              <img src="images/print.png" alt="Printing window to PDF in TIA Portal">
+              <figcaption>Export to PDF via “Microsoft Print to PDF”.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Adding a block to the project tree</h3>
+        <div class="content">
+          <p>
+            In the menu we have 3 basic buttons. Click <strong>Edit Mode</strong> to expand the menu, then select <strong>Add Block</strong>, fill in the <em>Block Name</em>, provide the path to the PDF
+            (e.g. <code>pdf/main.pdf</code>), and confirm. Optionally, you can check
+            <em>Create F-Block (yellow icon)</em> for safety blocks.
+          </p>
+          <div class="grid">
+            <figure>
+              <img src="images/viewer_0.png" alt="Viewer – main panel">
+              <figcaption>Basic menu buttons.</figcaption>
+            </figure>
+            <figure>
+              <img src="images/viewer_1.png" alt="Viewer – block tree">
+              <figcaption>All available buttons in Edit Mode.</figcaption>
+            </figure>
+          </div>
+          <div class="grid">
+            <figure>
+              <img src="images/add_block.png" alt="Adding a block">
+              <figcaption>Add Block window.</figcaption>
+            </figure>
+            <figure>
+              <img src="images/viewer_2.png" alt="Confirming block addition">
+              <figcaption>New block in the project tree.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll(".card h3").forEach(header => {
+      header.addEventListener("click", () => {
+        header.parentElement.classList.toggle("active");
+      });
+    });
+
+    function setLang(lang) {
+      localStorage.setItem("lang", lang);
+      document.querySelectorAll(".lang").forEach(el => el.classList.remove("active"));
+      document.querySelector(".lang-" + lang).classList.add("active");
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const saved = localStorage.getItem("lang") || "en";
+      setLang(saved);
+    });
+  </script>
+</body>
+</html>
