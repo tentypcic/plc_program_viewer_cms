@@ -5,7 +5,8 @@
 </p>
 
 <p align="center">
-	Project in pure **HTML + CSS + JS** (no backend)  
+	
+	Project in pure <strong>HTML + CSS + JS</strong> (no backend)  
 	<br />
 	<a href="https://tentypcic.github.io/plc_program_viewer_cms/">View demo</a>
 	·
