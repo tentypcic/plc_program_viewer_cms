@@ -33,7 +33,8 @@ before(async () => {
       res.end(data);
     } catch {
       res.statusCode = 404;
-      res.end();
+      res.setHeader("Content-Type", "text/html");
+      res.end(await readFile(path.join(__dirname, "../dist/404.html")));
     }
   });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -309,6 +310,7 @@ test("invalid import, invalid URL, responsive layout, keyboard search and themes
   await page.getByRole("button", { name: "Zapisz", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "Only HTTP" }).waitFor();
   await page.getByRole("button", { name: "Anuluj", exact: true }).click();
+  await page.waitForFunction(() => !document.querySelector("dialog[open]"));
   await page.keyboard.press("Control+k");
   assert.equal(
     await page
@@ -557,5 +559,22 @@ test("closing a document tab selects its matching block, projects stay isolated"
       .find((p) => p.id === first.id)
       .nodes.some((n) => n.name === "Independent block"),
   );
+  await context.close();
+});
+test("GitHub Pages slug redirects preserve the repository root without redirect loops", async () => {
+  const { context, page } = await setup([legacy()]);
+  await page.goto(base + "alpha/");
+  await page.getByRole("heading", { name: "Alpha", exact: true }).waitFor();
+  assert.ok(
+    page.url().includes("/plc_program_viewer_cms/viewer.html?slug=alpha"),
+  );
+  await page.goto(base + "nested/unknown/");
+  await page
+    .getByRole("heading", { name: "Dokumentacja pod kontrolą." })
+    .waitFor();
+  assert.ok(
+    page.url().includes("/plc_program_viewer_cms/viewer.html?slug=unknown"),
+  );
+  assert.equal((await getProjects(page)).length, 1);
   await context.close();
 });

@@ -80,11 +80,8 @@ export function modal(
   dialog.append(head, content);
   if (actions) dialog.append(actions);
   document.body.append(dialog);
-  const previous = document.activeElement as HTMLElement;
-  dialog.addEventListener("close", () => {
-    dialog.remove();
-    if (previous?.isConnected) previous.focus();
-  });
+  // Native dialog restores focus; a delayed manual restore could steal Ctrl+K focus.
+  dialog.addEventListener("close", () => dialog.remove());
   dialog.showModal();
   queueMicrotask(() =>
     dialog.querySelector<HTMLInputElement>("input, textarea, select")?.focus(),

@@ -29,9 +29,9 @@ Dane użytkownika: oryginalny localStorage pozostaje, migracja przechowuje dodat
 
 ## Weryfikacja
 
-Końcowa seria obejmuje 22 testy jednostkowe/integracyjne oraz 10 scenariuszy Chromium, TypeScript i produkcyjny build. Szczegółowe wyniki są w GitHub Actions; workflow ponawia je na każdym commicie PR.
+Końcowa seria obejmuje 22 testy jednostkowe/integracyjne oraz 11 scenariuszy Chromium, TypeScript i produkcyjny build. Szczegółowe wyniki są w GitHub Actions; workflow ponawia je na każdym commicie PR.
 
-Sprawdzane przypadki: migracja i jej równoległe wywołania, zachowanie oryginalnego JSON i daty, błędny schemat, quota-style rollback, brakujące i obce pliki, cykle i rodzice drzewa, kopiowanie ID, ZIP roundtrip, traversal i nieznane wpisy, historia 20 wersji i sprzątanie Blobów, kosz, UTF-8/UTF-16, XSS/URL, tworzenie/edycja/reset/usuwanie i odświeżenie, izolacja projektów, konflikty kart i kopia robocza, tekst/SCL, rzeczywiste renderowanie PDF, indeksowanie i ZIP PDF po indeksacji, zakładki, PL/EN, motyw, klawiatura oraz ekran 390 px.
+Sprawdzane przypadki: migracja i jej równoległe wywołania, zachowanie oryginalnego JSON i daty, błędny schemat, quota-style rollback, brakujące i obce pliki, cykle i rodzice drzewa, kopiowanie ID, ZIP roundtrip, traversal i nieznane wpisy, historia 20 wersji i sprzątanie Blobów, kosz, UTF-8/UTF-16, XSS/URL, tworzenie/edycja/reset/usuwanie i odświeżenie, izolacja projektów, konflikty kart i kopia robocza, tekst/SCL, rzeczywiste renderowanie PDF, indeksowanie i ZIP PDF po indeksacji, zakładki, PL/EN, motyw, klawiatura oraz ekran 390 px oraz stare slugi i nieprawidłowe zagnieżdżone adresy Pages.
 
 Test syntetycznego projektu z 12 000 bloków potwierdza ograniczoną liczbę wierszy DOM i znalezienie elementu spoza widocznego okna. To nie jest benchmark wszystkich maksymalnych rozmiarów dokumentacji przemysłowej.
 
