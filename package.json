@@ -1,0 +1,10 @@
+{
+  "name":"plc-programme-viewer-cms",
+  "private":true,
+  "scripts":{
+    "test":"node --test tests/safety.test.cjs",
+    "test:e2e":"node --test tests/browser.test.cjs",
+    "build":"node --check src/safety.js && node --check src/index-app.js && node --check src/viewer-app.js"
+  },
+  "devDependencies":{"playwright":"1.56.1"}
+}

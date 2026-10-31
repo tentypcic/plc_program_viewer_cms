@@ -1,4 +1,6 @@
 (function(){
+  const localStorage = PPVSafety.storage(window.localStorage, e => alert('Nie zapisano zmian: ' + e.message + '\nPoprzednie dane pozostały w pamięci przeglądarki. Wyeksportuj bieżące dane przed odświeżeniem.'));
+  const esc = PPVSafety.escapeHtml;
   
   function __slugify(str){
     const from = "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ";
@@ -21,9 +23,7 @@
     return origin + root;
   }
   function __projectUrl(p){
-    const meta = getProjectMeta(p);
-    const slug = p.slug || __slugify(p.name || (meta.title || 'project'));
-    return __prettyBase() + encodeURIComponent(slug);
+    return __prettyBase() + 'viewer.html?pid=' + encodeURIComponent(p.id);
   }
   function __toast(msg){
     try{
@@ -58,51 +58,8 @@
 
   const LS_KEY = "ppv.projects";
   
-(function(){
-  try{
-    const sp  = new URLSearchParams(location.search);
-    const b64 = sp.get("inline64");
-    if(!b64) return;
-
-    const pid = sp.get("pid");
-    const snap = JSON.parse(decodeURIComponent(escape(atob(b64)))); // {title,date,menuData}
-
-    const raw = localStorage.getItem(LS_KEY) || "[]";
-    let list; try { list = JSON.parse(raw); } catch { list = []; }
-    if(!Array.isArray(list)) list = [];
-
-    let i = -1;
-    if (pid) i = list.findIndex(p => p && p.id === pid);
-    if (i < 0) i = 0;
-
-    const next = Object.assign({}, list[i] || {
-      id: pid || ((crypto.randomUUID && crypto.randomUUID()) || String(Date.now())),
-      name: snap.title || "Project",
-      description: "",
-      tag: ""
-    }, {
-      name: snap.title || (list[i]?.name) || "Project",
-      inlineData: JSON.stringify({ title: snap.title, date: snap.date, menuData: snap.menuData }, null, 2),
-      date: snap.date
-    });
-
-    if (i < 0 || !list.length) list = [next]; else list[i] = next;
-    localStorage.setItem(LS_KEY, JSON.stringify(list));
-
-    // usuń param z URL, żeby nie stosować dwa razy
-    try{
-      sp.delete("inline64");
-      const clean = location.pathname + (sp.toString() ? ("?" + sp.toString()) : "");
-      history.replaceState(null, "", clean);
-    }catch(_){}
-  }catch(e){
-    console.warn("[PPV] inline64 consume error:", e);
-  }
-})();
-
-  
-  
   let projects = [];
+  let __catalogBlocked = false;
   let clampListenerInstalled = false;
 
   function __uuidv4(){
@@ -115,7 +72,7 @@
   // Zapis danych do sessionStorage — viewer odbierze przez token "ls:<key>"
   function makeSessionToken(jsonText){
     const key = "ppv.session." + __uuidv4();
-    try{ sessionStorage.setItem(key, jsonText); }catch(e){ /* ignore */ }
+    try { sessionStorage.setItem(key, jsonText); } catch(e) { alert("Nie można otworzyć projektu: brak miejsca na kopię roboczą. Wyeksportuj dane."); throw e; }
     return "ls:" + key;
   }
 
@@ -133,6 +90,7 @@
   }
 
   function normalize(p){
+    PPVSafety.list([p]);
     const genId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : __uuidv4();
     return {
       id: p.id || genId,
@@ -161,9 +119,12 @@
 
   async function __fetchJsonMaybe(url){
     try{
+      PPVSafety.safeUrl(url,location.href);
       const res = await fetch(url, { cache: 'no-store' });
       if(!res.ok) return null;
-      return await res.json();
+      const txt=await res.text();
+      if(new TextEncoder().encode(txt).length > PPVSafety.MAX_BYTES) throw Error("Plik przekracza 8 MiB.");
+      return JSON.parse(txt);
     }catch(_){ return null; }
   }
 
@@ -243,14 +204,17 @@
     return list;
   }
 
-  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
+  function save(){
+    if(__catalogBlocked) { alert('Zapis zablokowany: istniejący katalog jest nieprawidłowy. Zachowaj jego surową kopię przed naprawą.'); throw Error('Invalid existing catalog'); }
+    localStorage.setItem(LS_KEY, JSON.stringify(projects));
+  }
 
   // === Auto-refresh when viewer updates projects in another tab ===
   window.addEventListener('storage', (e)=>{
     try{
       if(e && e.key === LS_KEY){
         const raw = localStorage.getItem(LS_KEY) || "[]";
-        let list = JSON.parse(raw);
+        let list = PPVSafety.list(JSON.parse(raw));
         if(!Array.isArray(list)) list = [];
         projects = list.map(__applyInlineDataToProject);
         render(projects);
@@ -263,11 +227,12 @@
   window.addEventListener('pageshow', () => {
     try{
       const raw = localStorage.getItem(LS_KEY) || "[]";
-      let list = JSON.parse(raw);
+      let list = PPVSafety.list(JSON.parse(raw));
       if (!Array.isArray(list)) list = [];
       projects = list.map(__applyInlineDataToProject);
       render(projects);
     }catch(_){
+      __catalogBlocked = true;
       projects = [];
       render(projects);
     }
@@ -338,23 +303,23 @@
     card.className = 'card';
     card.innerHTML =
       '<div class="row">'+
-        '<h3 title="'+title.replaceAll('"','&quot;')+'">'+title+'</h3>'+
+        '<h3 title="'+esc(title)+'">'+esc(title)+'</h3>'+
         '<span class="tag">'+niceDate+'</span>'+
       '</div>'+
       '<p class="desc">'+(p.description ? String(p.description).replaceAll('<','&lt;') : "")+'</p>'+
-      '<button class="more" data-more-for="'+p.id+'" style="display:none">Pokaż więcej</button>'+
+      '<button class="more" data-more-for="'+esc(p.id)+'" style="display:none">Pokaż więcej</button>'+
       '<div class="actions">'+
-        '<a class="link" data-open-id="'+p.id+'" href="#">Open</a>'+
-        '<button class="kebab" aria-haspopup="true" aria-expanded="false" data-id="'+p.id+'">•••</button>'+
-        '<div class="menu" role="menu" data-menu-for="'+p.id+'">'+
-          '<button class="menu-item" data-act="rename"     data-id="'+p.id+'">✏<span>Rename</span></button>'+
-          '<button class="menu-item" data-act="editdesc"   data-id="'+p.id+'">📝<span>Edit description</span></button>'+
-          '<button class="menu-item" data-act="replace"    data-id="'+p.id+'">📂<span>Replace JSON file</span></button>'+
-          '<button class="menu-item" data-act="duplicate"  data-id="'+p.id+'">⧉<span>Duplicate</span></button>'+
-          '<button class="menu-item" data-act="exportOne"  data-id="'+p.id+'">💾<span>Export project</span></button>'+
-          '<button class="menu-item" data-act="copylink"  data-id="'+p.id+'">🔗<span>Copy link</span></button>'+
+        '<a class="link" data-open-id="'+esc(p.id)+'" href="#">Open</a>'+
+        '<button class="kebab" aria-haspopup="true" aria-expanded="false" data-id="'+esc(p.id)+'">•••</button>'+
+        '<div class="menu" role="menu" data-menu-for="'+esc(p.id)+'">'+
+          '<button class="menu-item" data-act="rename"     data-id="'+esc(p.id)+'">✏<span>Rename</span></button>'+
+          '<button class="menu-item" data-act="editdesc"   data-id="'+esc(p.id)+'">📝<span>Edit description</span></button>'+
+          '<button class="menu-item" data-act="replace"    data-id="'+esc(p.id)+'">📂<span>Replace JSON file</span></button>'+
+          '<button class="menu-item" data-act="duplicate"  data-id="'+esc(p.id)+'">⧉<span>Duplicate</span></button>'+
+          '<button class="menu-item" data-act="exportOne"  data-id="'+esc(p.id)+'">💾<span>Export project</span></button>'+
+          '<button class="menu-item" data-act="copylink"  data-id="'+esc(p.id)+'">🔗<span>Copy link</span></button>'+
           '<hr/>'+
-          '<button class="menu-item danger" data-act="delete" data-id="'+p.id+'">🗑<span>Delete</span></button>'+
+          '<button class="menu-item danger" data-act="delete" data-id="'+esc(p.id)+'">🗑<span>Delete</span></button>'+
         '</div>'+
       '</div>';
 
@@ -362,8 +327,8 @@
       e.preventDefault(); openProjectById(p.id);
     });
 
-    const kebab = card.querySelector('button.kebab[data-id="'+p.id+'"]');
-    const menu  = card.querySelector('.menu[data-menu-for="'+p.id+'"]');
+    const kebab = card.querySelector('button.kebab');
+    const menu = card.querySelector('.menu');
 
     kebab.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -438,13 +403,16 @@
           const input=document.getElementById('pickJsonFile');
           input.onchange=(e)=>{
             const f=e.target.files&&e.target.files[0]; if(!f) return;
+            try { PPVSafety.file(f); } catch(e) { alert(e.message); return; }
             const reader=new FileReader();
             reader.onload=ev=>{
               const pr=projects.find(x=>x.id===id); if(!pr) return;
+              try { PPVSafety.project(String(ev.target.result||"")); } catch(e) { alert(e.message); return; }
               pr.inlineData=String(ev.target.result||"");
               save(); render(projects);
             };
-            reader.readAsText(f); e.target.value='';
+            reader.onerror=()=>alert("Nie można odczytać pliku. Poprzednie dane zachowano.");
+      reader.readAsText(f); e.target.value='';
           };
           input.click();
         }
@@ -530,10 +498,11 @@
     const input = document.getElementById("pickJsonFile");
     input.onchange = (e)=>{
       const f = e.target.files && e.target.files[0]; if(!f) return;
+      try { PPVSafety.file(f); } catch(e) { alert(e.message); return; }
       const reader = new FileReader();
       reader.onload = ev => {
         const txt = String(ev.target.result || "");
-        try{ JSON.parse(txt); }catch(_){
+        try{ PPVSafety.project(txt); }catch(_){
           alert("Plik nie jest poprawnym JSON-em."); e.target.value = ""; return;
         }
         const meta = (()=>{
@@ -545,6 +514,7 @@
         projects.unshift(normalize({ name: meta.title, description: meta.desc, inlineData: txt }));
         save(); render(projects);
       };
+      reader.onerror=()=>alert("Nie można odczytać pliku. Poprzednie dane zachowano.");
       reader.readAsText(f);
       e.target.value = "";
     };
@@ -565,11 +535,13 @@
   }
 
   function importJson(file){
+    try { PPVSafety.file(file); } catch(e) { alert(e.message); return; }
     const reader = new FileReader();
     reader.onload = (ev)=>{
       try{
         const list = JSON.parse(String(ev.target.result||""));
-        if(!Array.isArray(list)) throw 0;
+        PPVSafety.list(list);
+        if(!confirm("Zastąpić całą listę projektów? Najpierw wyeksportuj kopię zapasową.")) return;
         projects = list.map(normalize); 
         save(); 
         render(projects);
@@ -577,7 +549,8 @@
         alert("Invalid file format.");
       }
     };
-    reader.readAsText(file);
+    reader.onerror=()=>alert("Nie można odczytać pliku. Poprzednie dane zachowano.");
+      reader.readAsText(file);
   }
 
   function openProjectById(id){
@@ -602,7 +575,9 @@
     const p = projects.find(x=>x.id===id); if(!p) return;
     const copy = JSON.parse(JSON.stringify(p));
     copy.id = __uuidv4();
-    copy.name = (p.name || 'Project') + ' (coppy)';
+    copy.name = (p.name || 'Project') + ' (copy)';
+    copy.slug = undefined;
+    if(copy.inlineData){ const data=PPVSafety.project(copy.inlineData); data.title=copy.name; copy.inlineData=JSON.stringify(data); }
     projects.unshift(copy); save(); render(projects);
   }
 
@@ -656,14 +631,14 @@
 
   (async function(){
     const fromLs = localStorage.getItem(LS_KEY);
-    projects = fromLs ? JSON.parse(fromLs) : [];
+    try { projects = fromLs ? PPVSafety.list(JSON.parse(fromLs)) : []; } catch(e) { __catalogBlocked=true; alert("Nie można wczytać zapisanych danych. Nie nadpisano ich. " + e.message); return; }
     const params = new URLSearchParams(location.search);
     const shouldReplace = params.get('replace') === '1';
 
     if(!Array.isArray(projects)) projects = [];
-    if(shouldReplace){ projects = []; }
+    if(shouldReplace && confirm("Zastąpić lokalną listę projektów?")){ projects = []; }
 
-    if(projects.length === 0){
+    if(projects.length === 0 && (fromLs === null || shouldReplace)){
       const imported = await __tryImportProjectList();
       if(imported && imported.length){
         projects = imported;

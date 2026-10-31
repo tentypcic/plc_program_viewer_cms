@@ -27,8 +27,9 @@
     return;
   }
   // Redirect to viewer with slug param (relative path keeps GH Pages repo base)
-  const target = './viewer.html?slug=' + encodeURIComponent(slug);
-  document.getElementById('msg').innerHTML = 'Opening <code>' + slug + '</code>…';
+  const base = '/' + parts.slice(0, -1).join('/') + (parts.length > 1 ? '/' : '');
+  const target = base + 'viewer.html?slug=' + encodeURIComponent(slug);
+  document.getElementById('msg').textContent = 'Opening ' + slug + '…';
   location.replace(target);
 })();
 </script>

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PLC program viewer</title>
     <link rel="icon" type="image/png" href="src/favicon.png">
     <link rel="stylesheet" href="src/viewer-style.css">
@@ -31,7 +32,7 @@
 			<div id="menuContainer" class="menu"></div>
 		</div>
 		<div class="content">
-			<iframe id="pdfViewer" src="default.html" allow="autoplay"></iframe>
+			<iframe id="pdfViewer" src="default.html" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer" title="Dokumentacja projektu"></iframe>
 		</div>
 	</div>
 
@@ -87,6 +88,7 @@
 	
 	<footer><a href="https://github.com/tentypcic" target="_blank">Created by tentypcic © 2025</a></footer>
 	
-	<script src="src/viewer-app.js"></script>
+	<script src="src/safety.js"></script>
+<script src="src/viewer-app.js"></script>
 </body>
 </html>
