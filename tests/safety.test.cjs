@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const s=require('../src/safety.js');
+const legacyModule={exports:{}};new Function('module',require('node:fs').readFileSync(require('node:path').join(__dirname,'../src/safety.js'),'utf8'))(legacyModule);const s=legacyModule.exports;
 const payload=()=>({title:'Demo',menuData:[{title:'Program blocks',items:[{text:'Main [OB1]',link:'pdf/main.pdf'}]}]});
 test('legacy object and menu array roundtrip',()=>{
  assert.deepEqual(s.project(JSON.stringify(payload())),payload());

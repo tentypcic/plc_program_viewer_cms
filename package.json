@@ -1,10 +1,26 @@
 {
-  "name":"plc-programme-viewer-cms",
-  "private":true,
-  "scripts":{
-    "test":"node --test tests/safety.test.cjs",
-    "test:e2e":"node --test tests/browser.test.cjs",
-    "build":"node --check src/safety.js && node --check src/index-app.js && node --check src/viewer-app.js"
+  "name": "plc-programme-viewer-cms",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "test": "node --import tsx --test tests/*.test.ts tests/safety.test.cjs",
+    "test:e2e": "node --test tests/browser.test.cjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
   },
-  "devDependencies":{"playwright":"1.56.1"}
+  "devDependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/node": "^22.18.0",
+    "fake-indexeddb": "^6.2.4",
+    "playwright": "1.56.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1"
+  },
+  "dependencies": {
+    "diff": "^8.0.2",
+    "fflate": "^0.8.2",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "type": "module"
 }
