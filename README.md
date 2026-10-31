@@ -1,154 +1,72 @@
-# PLC Programme Viewer CMS
+# PLC Viewer
 
-<p align="center">
-  <img src="screenshot.png" alt="PLC Programme Viewer screenshot" width="600">
-</p>
+Lokalna biblioteka dokumentacji PLC, rozwijająca **PLC Programme Viewer CMS**. Organizuj projekty i bloki, przeglądaj PDF oraz SCL, wyszukuj dokumentację i zachowuj przenośne kopie ZIP.
 
-<p align="center">
-	Project in pure <strong>HTML + CSS + JS</strong> (no backend)  
-	<br />
-	<a href="https://tentypcic.github.io/plc_program_viewer_cms/">View demo</a>
-	·
-	<a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a>
-</p>
+**Bez backendu, kont i przesyłania projektów na serwer.** Aplikacja działa na statycznym hostingu GitHub Pages. Dane użytkownika zapisuje w IndexedDB w jego przeglądarce.
 
----
+[Dotychczasowe demo](https://tentypcic.github.io/plc_program_viewer_cms/) · [PR modernizacji](https://github.com/tentypcic/plc_program_viewer_cms/pull/1) · [Raport wersji 2](docs/RELEASE_V2_PL.md)
 
-## 🧠 About The Project
+> Modernizacja pozostaje na branchu `develop/plc-viewer-modernization`. Dopóki PR nie zostanie zaakceptowany i wdrożony, publiczne demo może pokazywać poprzednią wersję.
 
-**PLC Programme Viewer CMS** is a lightweight, browser-based tool for managing and viewing Siemens TIA Portal program documentation.  
+## Możliwości
 
-It helps engineers **export blocks as PDFs, organize them into trees, and review them directly in the browser** – all without installing additional software or servers.  
+- Katalog projektów: tworzenie, edycja nazwy i opisu, przypinanie, kopiowanie, kosz i przywracanie.
+- Drzewo grup i podgrup; jawne typy OB / FB / FC / DB / UDT / TAGS / OTHER oraz oznaczenia F.
+- Wirtualizacja drzewa, menu kontekstowe, rozwijanie i zwijanie, przenoszenie przez pole lokalizacji.
+- Zakładki dokumentów, regulowany panel, zapamiętanie ostatniego projektu i widoku.
+- Tryb odczytu / edycji, interfejs PL/EN, motyw jasny i ciemny.
+- Wiele lokalnych PDF lub plików tekstowych przy jednym bloku; opisy, notatki, alarmy, działania naprawcze i informacje o sekwencji.
+- PDF.js: strony, powiększanie, indeksowanie tekstu do wyszukiwania. Indeks nie jest OCR.
+- Podgląd SCL z kolorowaniem leksykalnym, porównanie tekstu oraz porównanie projektów po UUID.
+- Globalne wyszukiwanie nazw, opisów, notatek, tekstów źródłowych i zindeksowanych PDF.
+- Import historycznych JSON, wersjonowany JSON v2, przenośny ZIP z lokalnymi PDF i tekstami.
+- Transakcje, kontrola rewizji, komunikaty o konfliktach między kartami i kopia niezapisanych zmian.
+- Do 20 wcześniejszych wersji projektu, automatycznie zachowywanych przed zmianami.
 
-All data is saved **locally** in the browser via `localStorage` or exported/imported as `.json` files.
+Analizator AST, semantyczne odwołania i mapa zależności, lista deklaracji oraz składniowe zwijanie struktur mają przygotowane kontrakty. **Nie są udawane przez wyrażenia regularne ani prezentowane jako działająca analiza.** Bezpośredni odczyt `.ap*` / `.zap*` z TIA Portal nie jest obsługiwany. Zobacz [architekturę i kontrakt importera](docs/ARCHITECTURE_PL.md).
 
----
+## Uruchomienie i testy
 
-## 🛠 Features
-
-- 📁 **Project list manager**
-  - Add, rename, duplicate, delete, or export/import projects (`projects.json`)
-  - Quick search by name, description, or date
-  - Pinned projects support (priority at the top)
-
-- 🧱 **Viewer**
-  - Organize blocks into **groups** and **subgroups**
-  - Add/edit **OB / FB / FC / DB / UDT / Tags**
-  - Optional **F-Blocks** with yellow icons
-  - Inline editing of names and links
-  - Embedded **PDF viewer** (`iframe`)
-  - Reset to default template
-
-- 💾 **Persistence**
-  - Automatic saving to `localStorage`
-  - Export/import single project or full list as JSON
-
-- 🌍 **Instructions panel**
-  - Built-in multilingual guide (PL / EN)
-  - Step-by-step screenshots on exporting blocks and adding them to the project tree
-
-- 🧠 **No backend required** – works fully offline
-
----
-
-## 📂 Project Structure
-
-- **`index.html`** – Project list (add, search, manage, import/export)  
-- **`viewer.html`** – Project viewer (tree + PDF preview + edit mode)  
-- **`default.html`** – Instruction page (multilingual)  
-- **`404.html`** – Redirect / slug handler for GitHub Pages  
-- **`src/*.js`** – Application logic (`index-app.js`, `viewer-app.js`)  
-- **`src/*.css`** – Styling (`index-style.css`, `viewer-style.css`)  
-- **`images/`** – Icons and screenshots for help  
-
----
-
-## 🚀 Getting Started
-
-1. Clone or download this repository  
-2. Open `index.html` in a modern browser  
-3. Use the toolbar to:
-   - ➕ Add a new project  
-   - 📂 Import/export `projects.json`  
-   - 🧱 Open empty template  
-
-> ⚡ Changes are **saved locally** in your browser.  
-> To share or back up work, export as `.json` and re-import later.
-
----
-
-## 📄 File Types
-
-In order for the block to have the correct style, you need to give it the appropriate tag in the name, e.g., **`Block [FC...]`** based on the example, the block we are adding has the Function block style.
-
-| Tag        | Meaning              |Style                          |
-|------------|----------------------|-------------------------------|
-| `[OB]`     | Organization block   |<img src="images/ob.png">      |
-| `[FB]`     | Function block       |<img src="images/fb.png">      |
-| `[FC]`     | Function             |<img src="images/fc.png">      |
-| `[DB]`     | Data block           |<img src="images/db.png">      |
-| `Tags`     | PLC tag table        |<img src="images/plc_tags.png">|
-| `UDT`      | User-defined data    |<img src="images/udt.png">     |
-| `F-Block`  | Safety block (yellow)|<img src="images/f_ob.png">    |
-
-
----
-
-## 📖 Instruction (Quick Preview)
-
-### 1. Exporting blocks from TIA Portal
-<p align="center">
-  <img src="images/Tree_TIA.png" alt="TIA Portal block tree" width="320">
-  <img src="images/print.png" alt="Print to PDF" width="320">
-</p>
-
-Right-click a block → **Print…** → choose *Microsoft Print to PDF* → save with block name.  
-
----
-
-### 2. Adding blocks to the project tree
-<p align="center">
-  <img src="images/viewer_0.png" alt="Main menu" width="320">
-  <img src="images/viewer_1.png" alt="Edit mode menu" width="320">
-</p>
-
-- Click **✏️ Edit Mode**  
-- Press **➕ Add Block**  
-- Fill in block name with `Tag` (e.g Main [OB1]) + PDF path (e.g. `pdf/Main_OB1.pdf`)  
-- Optionally mark **F-Block**  
-
-<p align="center">
-  <img src="images/add_block.png" alt="Add block window" width="320">
-  <img src="images/viewer_2.png" alt="Block added" width="320">
-</p>
-
----
-
-## 🧑‍💻 Author
-
-Created by [tentypcic](https://github.com/tentypcic)  © 2025
-
----
-
-## 📄 License
-
-Distributed under the **MIT License**.  
-
-## Stabilization branch (2026-10-31)
-
-See [the detailed audit and next steps](docs/STABILIZATION_AUDIT_PL.md).
-The modernization starts with data integrity and import/rendering safeguards, keeping the legacy JSON format. No IndexedDB migration or full UI redesign is included yet. The production application still consists of static files; `npm run build` checks JavaScript syntax, without generating a bundle.
-
-Development checks (Node.js 22+):
+Wymagany Node.js 22.18+ lub aktualny Node.js 24.
 
 ```sh
 npm ci
-npx playwright install --with-deps chromium
-npm test
-npm run build
-npm run test:e2e
+npm run dev
 ```
 
-Before updating, export your project catalog as JSON. JSON exports contain document links, not PDF attachments. Remote PDFs need network access and permission to be embedded. Local file imports are limited to 8 MiB and validated before saving. Save failures and stale project conflicts are reported; export your current JSON before closing an unsaved viewer.
+Serwer lokalny nasłuchuje na `127.0.0.1`. Aplikację należy otwierać przez HTTP(S), nie przez dwukrotne kliknięcie pliku HTML.
 
-The current implementation has no project-pinning control or completed static HTML exporter; the earlier feature list should be read with this correction. Full application localization, transactional IndexedDB storage and portable ZIP backups are planned separately.
+```sh
+npm test
+npm run build
+npx playwright install --with-deps chromium
+npm run test:e2e
+npm audit --audit-level=moderate
+```
+
+`npm run build` wykonuje TypeScript i buduje gotowy katalog `dist/`. Testy E2E wymagają wcześniejszego builda i sprawdzają właśnie `dist/` pod prefiksem `/plc_program_viewer_cms/`.
+
+## Migracja i kopie zapasowe
+
+Przed pierwszą aktualizacją pobierz `projects.json` ze starej wersji. Nowa wersja automatycznie odczytuje istniejący katalog `ppv.projects` albo samodzielny projekt `menuData`. Zachowuje oryginalne klucze localStorage, surową kopię w IndexedDB i oryginalne identyfikatory jako `legacyId`. Migracja i jej znacznik są zapisywane w jednej transakcji.
+
+Do regularnych kopii używaj **Kopia ZIP**. Eksport JSON przechowuje strukturę i tekst, ale nie bajty lokalnych PDF. Historia 20 wersji pomaga cofnąć edycję; nie zastępuje pobranej kopii poza przeglądarką. Usunięcie danych witryny usuwa także lokalną historię.
+
+[Instrukcja użytkownika i odzyskiwania](docs/USER_GUIDE_PL.md) · [Schemat danych](docs/SCHEMA_V2_PL.md)
+
+## GitHub Pages
+
+Workflow `quality.yml` uruchamia testy i build dla brancha oraz PR, a następnie udostępnia artefakt `plc-viewer-pages`.
+
+Workflow `pages.yml` buduje i wdraża aplikację **dopiero po pushu do `main`**, czyli po zaakceptowanym scaleniu. W repozytorium należy ustawić **Settings → Pages → Source → GitHub Actions**. Nie wdrażaj surowych plików TypeScript jako strony; publikowany jest katalog `dist/`. Względna baza Vite obsługuje adres repozytorium na GitHub Pages.
+
+## Ograniczenia
+
+- ZIP/JSON do 100 MiB; ZIP maks. 250 MiB po rozpakowaniu. Lokalny PDF do 50 MiB, tekstowy plik do 2 MiB i do 2 mln znaków treści. Obsługiwane UTF-8 oraz UTF-16 z BOM; tekst jest przechowywany i eksportowany jako Unicode/UTF-8.
+- Do 2000 projektów w jednym imporcie, do 20 000 węzłów i dokumentów w projekcie, głębokość drzewa do 64. Starszy format: głębokość do 32.
+- Limit miejsca zależy od przeglądarki. Nie jest gwarantowane przechowywanie maksymalnego rozmiaru każdego pliku równocześnie.
+- Zdalny PDF może wymagać CORS i dostępu do sieci. ZIP zachowuje taki adres, nie pobiera potajemnie zdalnego dokumentu.
+- Ładowanie samej aplikacji wymaga hostingu lub lokalnego serwera. Brak Service Workera i gwarancji ponownego otwarcia offline.
+- Zweryfikowano Chromium; pełna macierz Edge/Firefox/Safari wymaga osobnego sprawdzenia.
+
+Projekt rozwijany przez [tentypcic](https://github.com/tentypcic). Licencja MIT.

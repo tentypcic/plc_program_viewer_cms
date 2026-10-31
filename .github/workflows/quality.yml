@@ -1,4 +1,4 @@
-name: Stabilization checks
+name: PLC Viewer quality
 on:
   pull_request:
   push:
@@ -13,8 +13,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=moderate
       - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run build
       - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plc-viewer-pages
+          path: dist
+          retention-days: 14

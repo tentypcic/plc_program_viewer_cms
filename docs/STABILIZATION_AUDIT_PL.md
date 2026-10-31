@@ -1,5 +1,7 @@
 # Audyt i stabilizacja — etap 1
 
+> Dokument historyczny etapu 1. Aktualny stan i rozwiązanie ograniczeń localStorage opisuje [raport wersji 2](RELEASE_V2_PL.md).
+
 Data: 31 października 2026. Repozytorium: `tentypcic/plc_program_viewer_cms`.
 
 ## Zakres i punkt przywracania
@@ -16,21 +18,21 @@ Dotychczasowe `menuData`, `pageTitle`, `pageEdited`, `activePdf` były globalne 
 
 ## Ustalenia i poprawki
 
-| Ryzyko | Problem w kodzie bazowym | Zmiana |
-|---|---|---|
-| Krytyczne: integralność | Brak dopasowania PID/sluga kończył się zapisem do pierwszego projektu; dopasowywano też po tytule | Aktualizacja wyłącznie po ID; brak/usunięcie projektu kończy się komunikatem, bez podmiany innych danych |
-| Wysokie: integralność | Wiele projektów współdzieliło globalne menu i tytuł | Roboczy stan viewera w pamięci jego karty; katalog pozostaje źródłem projektu; sesyjny stan podglądu oddzielony po ID |
-| Wysokie: XSS | Tytuł karty i HTML ikony/tytułu sekcji trafiały do innerHTML | Escaping pól karty, sekcje przez textContent/createTextNode, ikony z kontrolowanej listy |
-| Wysokie: import | Syntaktycznie poprawny JSON traktowano jako poprawny projekt; podmiana nie miała walidacji | Wspólny walidator struktury, typów, ID, slugów, adresów, głębokości i liczby węzłów przed zapisem |
-| Wysokie: zapis | Błędy zapisu ignorowano, pokazywano sukces | Komunikat błędu, zachowanie poprzedniego trwałego zapisu, ostrzeżenie przed zamknięciem niezapisanego viewera i możliwość eksportu bieżącego stanu |
-| Wysokie: konflikt | Starsza karta mogła nadpisać nowszą | Porównanie wersji rekordu przed zapisem viewera; kontrola nieaktualnej listy w katalogu |
-| Wysokie: routing | Backlink inline64 mógł nadpisać pierwszy projekt i ujawniał dane w historii URL | Usunięto generowanie i przyjmowanie tego mechanizmu; powrót do katalogu zwykłym linkiem |
-| Wysokie: dokumenty | Dowolny schemat URL przekazywany do iframe | HTTP(S)/ścieżki względne; odrzucenie javascript/data/file, danych logowania, znaków kontrolnych i backslashy; sandbox dokumentów bez skryptów |
-| Średnie: tożsamość | Duplikat zachowywał slug oraz stary tytuł wewnątrz JSON | Nowe ID, usunięcie odziedziczonego sluga, nowy tytuł również w payloadzie |
-| Średnie: grupy | Tekstowa ścieżka ` > ` była niejednoznaczna | Cel dodawania wskazuje konkretną tablicę węzłów; nazwy grup mogą zawierać separator |
-| Średnie: destrukcyjne operacje | Reset/usuwanie drzewa i podmiana katalogu bez potwierdzenia | Potwierdzenia przed wykonaniem |
-| Średnie: linki | Kopiowany slug nie zawsze był zapisany; 404 z końcowym ukośnikiem prowadziło w złe miejsce | Link po PID; zachowany odczyt starych slugów; poprawiona ścieżka przekierowania |
-| Średnie: mały ekran | Brak viewport viewera i stała szerokość menu ograniczały dokument | Viewport, układ pionowy na wąskim ekranie, ograniczenie wysokości drzewa, responsywne dialogi |
+| Ryzyko                         | Problem w kodzie bazowym                                                                          | Zmiana                                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Krytyczne: integralność        | Brak dopasowania PID/sluga kończył się zapisem do pierwszego projektu; dopasowywano też po tytule | Aktualizacja wyłącznie po ID; brak/usunięcie projektu kończy się komunikatem, bez podmiany innych danych                                           |
+| Wysokie: integralność          | Wiele projektów współdzieliło globalne menu i tytuł                                               | Roboczy stan viewera w pamięci jego karty; katalog pozostaje źródłem projektu; sesyjny stan podglądu oddzielony po ID                              |
+| Wysokie: XSS                   | Tytuł karty i HTML ikony/tytułu sekcji trafiały do innerHTML                                      | Escaping pól karty, sekcje przez textContent/createTextNode, ikony z kontrolowanej listy                                                           |
+| Wysokie: import                | Syntaktycznie poprawny JSON traktowano jako poprawny projekt; podmiana nie miała walidacji        | Wspólny walidator struktury, typów, ID, slugów, adresów, głębokości i liczby węzłów przed zapisem                                                  |
+| Wysokie: zapis                 | Błędy zapisu ignorowano, pokazywano sukces                                                        | Komunikat błędu, zachowanie poprzedniego trwałego zapisu, ostrzeżenie przed zamknięciem niezapisanego viewera i możliwość eksportu bieżącego stanu |
+| Wysokie: konflikt              | Starsza karta mogła nadpisać nowszą                                                               | Porównanie wersji rekordu przed zapisem viewera; kontrola nieaktualnej listy w katalogu                                                            |
+| Wysokie: routing               | Backlink inline64 mógł nadpisać pierwszy projekt i ujawniał dane w historii URL                   | Usunięto generowanie i przyjmowanie tego mechanizmu; powrót do katalogu zwykłym linkiem                                                            |
+| Wysokie: dokumenty             | Dowolny schemat URL przekazywany do iframe                                                        | HTTP(S)/ścieżki względne; odrzucenie javascript/data/file, danych logowania, znaków kontrolnych i backslashy; sandbox dokumentów bez skryptów      |
+| Średnie: tożsamość             | Duplikat zachowywał slug oraz stary tytuł wewnątrz JSON                                           | Nowe ID, usunięcie odziedziczonego sluga, nowy tytuł również w payloadzie                                                                          |
+| Średnie: grupy                 | Tekstowa ścieżka `>` była niejednoznaczna                                                         | Cel dodawania wskazuje konkretną tablicę węzłów; nazwy grup mogą zawierać separator                                                                |
+| Średnie: destrukcyjne operacje | Reset/usuwanie drzewa i podmiana katalogu bez potwierdzenia                                       | Potwierdzenia przed wykonaniem                                                                                                                     |
+| Średnie: linki                 | Kopiowany slug nie zawsze był zapisany; 404 z końcowym ukośnikiem prowadziło w złe miejsce        | Link po PID; zachowany odczyt starych slugów; poprawiona ścieżka przekierowania                                                                    |
+| Średnie: mały ekran            | Brak viewport viewera i stała szerokość menu ograniczały dokument                                 | Viewport, układ pionowy na wąskim ekranie, ograniczenie wysokości drzewa, responsywne dialogi                                                      |
 
 Pozostałe innerHTML tworzą statyczne kontrolki albo czyszczą kontenery. Opis projektu jest traktowany jako tekst. Importowane pole `icon` pozostaje w danych dla kompatybilności, ale nie jest wykonywane. Zaufana lokalna instrukcja `default.html` zachowuje skrypty i zmianę języka; zewnętrzne dokumenty ich nie otrzymują. Parametry `pid` i `slug` nie zapisują danych z samego URL.
 
