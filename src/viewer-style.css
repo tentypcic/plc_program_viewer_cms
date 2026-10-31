@@ -236,3 +236,12 @@ footer a:hover {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Keep the document usable on narrow screens. */
+@media (max-width: 720px) {
+  .main { flex-direction: column; min-height: 0; }
+  .main > .menu, #menuContainer { min-width: 0; max-width: none; width: 100%; }
+  .main > .menu { max-height: 45vh; flex-shrink: 0; }
+  .content { min-height: 45vh; }
+  #dialog, #editDialog { min-width: 0; width: min(440px, 94vw); }
+}

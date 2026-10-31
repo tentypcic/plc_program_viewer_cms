@@ -133,3 +133,22 @@ Created by [tentypcic](https://github.com/tentypcic)  © 2025
 ## 📄 License
 
 Distributed under the **MIT License**.  
+
+## Stabilization branch (2026-10-31)
+
+See [the detailed audit and next steps](docs/STABILIZATION_AUDIT_PL.md).
+The modernization starts with data integrity and import/rendering safeguards, keeping the legacy JSON format. No IndexedDB migration or full UI redesign is included yet. The production application still consists of static files; `npm run build` checks JavaScript syntax, without generating a bundle.
+
+Development checks (Node.js 22+):
+
+```sh
+npm ci
+npx playwright install --with-deps chromium
+npm test
+npm run build
+npm run test:e2e
+```
+
+Before updating, export your project catalog as JSON. JSON exports contain document links, not PDF attachments. Remote PDFs need network access and permission to be embedded. Local file imports are limited to 8 MiB and validated before saving. Save failures and stale project conflicts are reported; export your current JSON before closing an unsaved viewer.
+
+The current implementation has no project-pinning control or completed static HTML exporter; the earlier feature list should be read with this correction. Full application localization, transactional IndexedDB storage and portable ZIP backups are planned separately.
