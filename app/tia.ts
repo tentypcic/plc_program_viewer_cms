@@ -152,61 +152,65 @@ export function tiaView(
       ),
     ),
   );
-  const table = html("table");
-  const header = html("tr");
-  for (const label of [
-    ui("Section / Address", "Sekcja / adres"),
-    ui("Name", "Nazwa"),
-    ui("Data type", "Typ danych"),
-    ui("Start value", "Wartość początkowa"),
-  ])
-    header.append(html("th", label));
-  table.append(header);
-  for (const section of Array.from(
-    all(attr, "Sections")[0]?.children || [],
-  ).filter((e) => e.localName === "Section")) {
-    const add = (member: Element, prefix = "") => {
+  if (["DB", "UDT", "TAGS"].includes(type))
+    wrap.append(tiaDataTable(root, attr, type, name, lang));
+  else {
+    const table = html("table");
+    const header = html("tr");
+    for (const label of [
+      ui("Section / Address", "Sekcja / adres"),
+      ui("Name", "Nazwa"),
+      ui("Data type", "Typ danych"),
+      ui("Start value", "Wartość początkowa"),
+    ])
+      header.append(html("th", label));
+    table.append(header);
+    for (const section of Array.from(
+      all(attr, "Sections")[0]?.children || [],
+    ).filter((e) => e.localName === "Section")) {
+      const add = (member: Element, prefix = "") => {
+        const row = html("tr");
+        for (const v of [
+          section.getAttribute("Name") || "",
+          prefix + member.getAttribute("Name"),
+          member.getAttribute("Datatype") || "",
+          value(member, "StartValue"),
+        ])
+          row.append(html("td", v));
+        table.append(row);
+        for (const m of all(member, "Member").filter(
+          (c) =>
+            !c.parentElement?.closest("Member") ||
+            c.parentElement.closest("Member") === member,
+        ))
+          add(m, prefix + member.getAttribute("Name") + ".");
+      };
+      for (const m of Array.from(section.children).filter(
+        (c) => c.localName === "Member",
+      ))
+        add(m);
+    }
+    for (const tag of all(root, "SW.Tags.PlcTag")) {
+      const a = child(tag, "AttributeList")!;
       const row = html("tr");
       for (const v of [
-        section.getAttribute("Name") || "",
-        prefix + member.getAttribute("Name"),
-        member.getAttribute("Datatype") || "",
-        value(member, "StartValue"),
+        value(a, "LogicalAddress"),
+        value(a, "Name"),
+        value(a, "DataTypeName"),
+        "",
       ])
         row.append(html("td", v));
       table.append(row);
-      for (const m of all(member, "Member").filter(
-        (c) =>
-          !c.parentElement?.closest("Member") ||
-          c.parentElement.closest("Member") === member,
-      ))
-        add(m, prefix + member.getAttribute("Name") + ".");
-    };
-    for (const m of Array.from(section.children).filter(
-      (c) => c.localName === "Member",
-    ))
-      add(m);
-  }
-  for (const tag of all(root, "SW.Tags.PlcTag")) {
-    const a = child(tag, "AttributeList")!;
-    const row = html("tr");
-    for (const v of [
-      value(a, "LogicalAddress"),
-      value(a, "Name"),
-      value(a, "DataTypeName"),
-      "",
-    ])
-      row.append(html("td", v));
-    table.append(row);
-  }
-  if (table.children.length > 1) {
-    const details = html("details");
-    details.open = true;
-    details.append(
-      html("summary", ui("Interface / data", "Interfejs / dane")),
-      table,
-    );
-    wrap.append(details);
+    }
+    if (table.children.length > 1) {
+      const details = html("details");
+      details.open = true;
+      details.append(
+        html("summary", ui("Interface / data", "Interfejs / dane")),
+        table,
+      );
+      wrap.append(details);
+    }
   }
   const units = all(root, "SW.Blocks.CompileUnit");
   if (units.length) {
@@ -669,4 +673,216 @@ export function matchingReferences(
         return s === q || s.startsWith(q + ".") || s.startsWith(q + "[");
       })(),
   );
+}
+
+function tiaDataTable(
+  root: Element,
+  attr: Element,
+  type: string,
+  name: string,
+  lang: "pl" | "en",
+) {
+  const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
+  const host = html("div");
+  host.className = "tia-data-grid";
+  host.append(html("h3", name));
+  const table = html("table");
+  const head = html("thead");
+  const header = html("tr");
+  const columns = [
+    "#",
+    ui("Name", "Nazwa"),
+    ui("Data type", "Typ danych"),
+    type === "TAGS"
+      ? ui("Address", "Adres")
+      : type === "UDT"
+        ? ui("Default value", "Wartość domyślna")
+        : ui("Start value", "Wartość początkowa"),
+    ...(type === "UDT" ? [] : ["Retain"]),
+  ];
+  for (const label of columns) header.append(html("th", label));
+  head.append(header);
+  table.append(head);
+  const body = html("tbody");
+  table.append(body);
+  host.append(table);
+  type Row = {
+    name: string;
+    path: string;
+    datatype: string;
+    start: string;
+    inferred?: boolean;
+    retain: string;
+    children?: Row[];
+    open?: boolean;
+    group?: boolean;
+    load?: () => Row[];
+  };
+  const defaults = (dt: string) =>
+    /^bool$/i.test(dt)
+      ? "false"
+      : /^(w?string)(\[\d+\])?$/i.test(dt)
+        ? "''"
+        : /^(s?int|dint|lint|usint|uint|udint|ulint|real|lreal|byte|word|dword|lword)$/i.test(
+              dt,
+            )
+          ? "0"
+          : "";
+  const retain = (e: Element, inherited = "") =>
+    e.getAttribute("Remanence") || value(e, "Retain") || inherited;
+  const members = (e: Element) =>
+    all(e, "Member").filter(
+      (m) =>
+        m.parentElement?.closest("Member") === e ||
+        (e.localName === "Section" && !m.parentElement?.closest("Member")),
+    );
+  const memberRow = (m: Element, prefix = "", inherited = ""): Row => {
+    const dt = m.getAttribute("Datatype") || "";
+    const key = m.getAttribute("Name") || "";
+    const path = prefix + key;
+    const explicit = child(m, "StartValue") || child(m, "DefaultValue");
+    const row: Row = {
+      name: key,
+      path,
+      datatype: dt,
+      start: explicit ? explicit.textContent || "" : defaults(dt),
+      inferred: !explicit,
+      retain: retain(m, inherited),
+    };
+    const children = members(m);
+    if (children.length) {
+      row.children = children.map((c) => memberRow(c, path + ".", row.retain));
+      row.open = true;
+    }
+    const array = dt.match(/^Array\[(-?\d+)\.\.(-?\d+)\] of (.+)$/i);
+    if (array && !children.length) {
+      const lo = Number(array[1]),
+        hi = Number(array[2]);
+      if (Number.isSafeInteger(lo) && Number.isSafeInteger(hi) && hi >= lo)
+        row.load = () => {
+          const entries: Row[] = [];
+          for (let i = lo; i <= hi && entries.length < 200; i++)
+            entries.push({
+              name: `[${i}]`,
+              path: `${path}[${i}]`,
+              datatype: array[3],
+              start: explicit ? "" : defaults(array[3]),
+              inferred: !explicit,
+              retain: row.retain,
+            });
+          if (hi - lo >= 200)
+            entries.push({
+              name: ui(
+                "First 200 elements shown",
+                "Wyświetlono pierwsze 200 elementów",
+              ),
+              path,
+              datatype: "",
+              start: "",
+              retain: "",
+            });
+          return entries;
+        };
+    }
+    return row;
+  };
+  const rows: Row[] = [];
+  if (type === "TAGS")
+    for (const tag of all(root, "SW.Tags.PlcTag")) {
+      const a = child(tag, "AttributeList")!;
+      rows.push({
+        name: value(a, "Name"),
+        path: value(a, "Name"),
+        datatype: value(a, "DataTypeName"),
+        start: value(a, "LogicalAddress"),
+        retain: retain(a),
+      });
+    }
+  else
+    for (const section of Array.from(
+      all(attr, "Sections")[0]?.children || [],
+    ).filter((e) => e.localName === "Section")) {
+      const items = Array.from(section.children)
+        .filter((e) => e.localName === "Member")
+        .map((m) => memberRow(m));
+      if (section.getAttribute("Name") === "None") rows.push(...items);
+      else
+        rows.push({
+          name: section.getAttribute("Name") || "",
+          path: "",
+          datatype: "",
+          start: "",
+          retain: "",
+          children: items,
+          open: true,
+          group: true,
+        });
+    }
+  function render() {
+    body.replaceChildren();
+    let number = 0;
+    function add(row: Row, depth: number) {
+      const tr = html("tr");
+      tr.dataset.path = row.path;
+      if (row.group) tr.className = "tia-data-section";
+      tr.append(html("td", String(++number)));
+      const cell = html("td");
+      cell.style.paddingLeft = `${depth * 18 + 6}px`;
+      cell.title = row.path;
+      if (row.children || row.load) {
+        const toggle = html("button", `${row.open ? "▾" : "▸"} ${row.name}`);
+        toggle.className = "tia-data-toggle";
+        toggle.setAttribute("aria-expanded", String(!!row.open));
+        toggle.onclick = () => {
+          if (row.load) {
+            row.children = row.load();
+            delete row.load;
+          }
+          row.open = !row.open;
+          render();
+        };
+        cell.append(toggle);
+      } else {
+        const icon = html("span", "▪");
+        icon.className = "tia-member-icon";
+        cell.append(icon, document.createTextNode(row.name));
+      }
+      tr.append(cell, html("td", row.datatype));
+      const start = html("td", row.start);
+      if (row.inferred && row.start) {
+        start.className = "tia-default";
+        start.title = ui(
+          "Type default; not explicitly exported. Not a live value.",
+          "Wartość domyślna typu, niewpisana jawnie w eksporcie. To nie jest wartość online.",
+        );
+      }
+      tr.append(start);
+      if (type !== "UDT") {
+        const retainCell = html("td");
+        if (!row.group) {
+          const known = /^(Retain|NonRetain|true|false)$/i.test(row.retain);
+          if (known) {
+            const mark = html("input");
+            mark.type = "checkbox";
+            mark.checked = /^(Retain|true)$/i.test(row.retain);
+            mark.disabled = true;
+            mark.setAttribute("aria-label", "Retain " + row.path);
+            retainCell.append(mark);
+          } else {
+            retainCell.textContent = "—";
+            retainCell.title = ui(
+              "Retain not specified in XML",
+              "Retain nieokreślone w XML",
+            );
+          }
+        }
+        tr.append(retainCell);
+      }
+      body.append(tr);
+      if (row.open) for (const c of row.children || []) add(c, depth + 1);
+    }
+    for (const r of rows) add(r, 0);
+  }
+  render();
+  return host;
 }

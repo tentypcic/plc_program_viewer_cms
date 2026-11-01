@@ -1710,3 +1710,67 @@ form > .dialog-actions {
   flex-wrap: wrap;
   margin: 14px 0;
 }
+.tia-data-grid {
+  margin-top: 14px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.tia-data-grid h3 {
+  padding: 6px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--line);
+}
+.tia-view .tia-data-grid table {
+  margin: 0;
+  width: 100%;
+  min-width: 540px;
+  font-size: 12px;
+}
+.tia-view .tia-data-grid th,
+.tia-view .tia-data-grid td {
+  padding: 4px 8px;
+  height: 26px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.tia-data-grid th {
+  background: var(--surface2);
+  font-weight: 500;
+}
+.tia-data-grid th:first-child,
+.tia-data-grid td:first-child {
+  width: 32px;
+  text-align: right;
+  color: var(--muted);
+  background: var(--surface2);
+}
+.tia-data-grid tr:hover {
+  background: var(--accentsoft);
+}
+.tia-data-section {
+  background: var(--surface2);
+  font-weight: 600;
+}
+.tia-data-toggle {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.tia-member-icon {
+  color: #527cd3;
+  display: inline-block;
+  width: 17px;
+}
+.tia-default {
+  color: var(--muted);
+}
+.tia-data-grid input {
+  margin: 0;
+  vertical-align: middle;
+}

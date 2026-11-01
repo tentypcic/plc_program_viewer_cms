@@ -74,6 +74,40 @@ try {
     document.body.replaceChildren();
     for (const text of Object.values(files))
       document.body.append(tiaView(text));
+    const db = [...document.querySelectorAll(".tia-data-grid")].find(
+      (e) => e.querySelector("h3")?.textContent === "DemoData",
+    );
+    const findRow = (path) =>
+      [...db.querySelectorAll("[data-path]")].find(
+        (e) => e.dataset.path === path,
+      );
+    if (
+      !findRow("Info.Serial") ||
+      !db.querySelector("th:last-child").textContent.includes("Retain")
+    )
+      throw Error("DB tree columns");
+    findRow("Info").querySelector("button").click();
+    if (findRow("Info.Serial")) throw Error("Structure collapse");
+    findRow("Info").querySelector("button").click();
+    findRow("Samples").querySelector("button").click();
+    if (
+      !findRow("Samples[1]") ||
+      !findRow("Samples[3]") ||
+      findRow("Samples[4]")
+    )
+      throw Error("Array bounds");
+    findRow("Samples").querySelector("button").click();
+    if (findRow("Samples[1]")) throw Error("Array collapse");
+    const udt = [...document.querySelectorAll(".tia-data-grid")].find(
+      (e) => e.querySelector("h3")?.textContent === "SampleInfo",
+    );
+    if (udt.querySelector("th:last-child").textContent !== "Default value")
+      throw Error("UDT columns");
+    const tags = [...document.querySelectorAll(".tia-data-grid")].find(
+      (e) => e.querySelector("h3")?.textContent === "DemoTags",
+    );
+    if (tags.querySelectorAll("th")[3].textContent !== "Address")
+      throw Error("Tag columns");
     let rejected = 0;
     for (const bad of ["<bad>", "<!DOCTYPE x><Document/>"]) {
       try {
@@ -100,7 +134,11 @@ try {
       svgText: [...document.querySelectorAll("svg")]
         .map((e) => e.textContent)
         .join(" "),
-      text: document.body.textContent,
+      text:
+        document.body.textContent +
+        [...document.querySelectorAll("[data-path]")]
+          .map((e) => e.dataset.path)
+          .join(" "),
       rejected,
     };
   }, files);
@@ -244,6 +282,13 @@ try {
   await page.reload();
   await page.locator(".tia-network").first().waitFor();
   await page.screenshot({ path: "/tmp/plc-viewer-synthetic-light.png" });
+  await page
+    .getByRole("treeitem")
+    .filter({ hasText: "DemoData [DB4]" })
+    .click();
+  await page.locator(".tia-data-grid").waitFor();
+  await page.screenshot({ path: "/tmp/plc-viewer-db.png" });
+  await page.getByRole("tab", { name: "DemoControl.xml", exact: true }).click();
   await page.getByRole("button", { name: "Zmień motyw", exact: true }).click();
   await page.screenshot({ path: "/tmp/plc-viewer-synthetic-dark.png" });
   assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");

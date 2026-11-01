@@ -20,7 +20,7 @@ This is a documentation preview, not a TIA runtime, compiler or equivalent edito
 
 Complex branching, junctions, negation variants, GRAPH, FBD, SCL network XML and vendor instructions need further implementation and reference exports. Unrecognized instruction boxes are marked generic; unsupported network source languages point to original XML. Do not assume a generic or branched diagram reproduces all execution semantics. UDT declarations are displayed; there is no cross-file type resolver or hardware-symbol resolver.
 
-Start-value cells show explicitly exported `StartValue` values. Empty cells do not imply a particular runtime/default value. Unconnected pins do not display live timer or numeric values.
+DB/UDT tables show explicitly exported `StartValue` or `DefaultValue`. When absent, basic Bool, string and numeric type defaults are shown in muted text with a tooltip; these are not live values. Unsupported type defaults remain empty. Retain shows the exported state or an em dash when unspecified. Nested members expand/collapse, and one-dimensional array previews lazily show up to 200 elements. Unconnected pins do not display live timer or numeric values.
 
 ## Checks
 
