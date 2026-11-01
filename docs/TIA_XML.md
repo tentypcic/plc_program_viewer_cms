@@ -9,6 +9,7 @@ The supplied V18 reference was verified locally: eight objects, five wired netwo
 - The XML parser reads object attributes and namespaced interface sections, recursively expanding nested members and retaining declared types/start values.
 - FlgNet `Access` elements provide local/global operands and constants. Array indices and instance symbols are shown.
 - `Wire` connects `NameCon` instruction pins, `IdentCon` operands, power rails and open connectors by `UId`.
+- Double-click a resolved FC/FB call box (or focus it and press Enter) to open the target XML document in a tab and reveal it in the project tree. Targets are resolved by exact XML name and block type within the current project; missing or ambiguous targets remain inactive.
 - Calls use parameter sections to distinguish input/output pins. Open connectors are shown as open; no simulated values are invented.
 - SVG layout computes instruction columns from connectivity. Contacts and coils use ladder symbols; SR, TON, ADD and FC/FB calls use pin-labelled boxes. Networks and interfaces collapse independently.
 - XML is never inserted as HTML. The importer rejects DTD/entity declarations, malformed XML, traversal paths, excessive ZIP entries and unsupported object roots. Import writes remain transactional.

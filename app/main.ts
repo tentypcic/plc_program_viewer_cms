@@ -1,5 +1,5 @@
 import "./style.css";
-import { tiaView } from "./tia";
+import { tiaView, resolveTiaCall } from "./tia";
 import {
   el,
   button,
@@ -1564,7 +1564,12 @@ async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
     if (epoch !== contentEpoch) return;
     if (/\.xml$/i.test(doc.name) && /<SW\.(Blocks|Types|Tags)\./.test(text)) {
       try {
-        content.append(tiaView(text, lang));
+        content.append(
+          tiaView(text, lang, (name, type) => {
+            const target = resolveTiaCall(p, name, type);
+            return target ? () => openDoc(target.id) : undefined;
+          }),
+        );
         return;
       } catch (error) {
         content.append(el("p", "muted", String(error)));

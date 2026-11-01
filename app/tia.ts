@@ -4,6 +4,7 @@ import {
   uuid,
   validateProject,
   type BlockType,
+  type Project,
 } from "./model";
 const all = (e: Element | Document, name: string) =>
   Array.from(e.getElementsByTagNameNS("*", name));
@@ -111,7 +112,32 @@ const html = <K extends keyof HTMLElementTagNameMap>(tag: K, text = "") => {
   e.textContent = text;
   return e;
 };
-export function tiaView(text: string, lang: "pl" | "en" = "en") {
+export function resolveTiaCall(project: Project, name: string, type: string) {
+  const nodeIds = new Set(
+    project.nodes
+      .filter((n) => n.kind === "block" && n.blockType === type)
+      .map((n) => n.id),
+  );
+  const matches = project.documents.filter((d) => {
+    if (!nodeIds.has(d.nodeId) || !/\.xml$/i.test(d.name) || !d.text)
+      return false;
+    try {
+      const parsed = parseTia(d.text);
+      return parsed.name === name && parsed.type === type;
+    } catch {
+      return false;
+    }
+  });
+  return new Set(matches.map((d) => d.nodeId)).size === 1
+    ? matches[0]
+    : undefined;
+}
+type CallLink = (name: string, type: string) => (() => void) | undefined;
+export function tiaView(
+  text: string,
+  lang: "pl" | "en" = "en",
+  callLink?: CallLink,
+) {
   const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
   const { root, attr, name, type, number } = parseTia(text);
   const wrap = html("div");
@@ -195,7 +221,7 @@ export function tiaView(text: string, lang: "pl" | "en" = "en") {
       ),
     );
     const net = all(unit, "FlgNet")[0];
-    if (net) details.append(drawNetwork(net));
+    if (net) details.append(drawNetwork(net, callLink));
     else {
       const source = all(unit, "NetworkSource")[0];
       if (source?.children.length)
@@ -226,7 +252,7 @@ export function tiaView(text: string, lang: "pl" | "en" = "en") {
   wrap.append(source);
   return wrap;
 }
-function drawNetwork(net: Element) {
+function drawNetwork(net: Element, callLink?: CallLink) {
   const parts = Array.from(all(net, "Parts")[0]?.children || []).filter((e) =>
     ["Part", "Call"].includes(e.localName),
   );
@@ -465,6 +491,36 @@ function drawNetwork(net: Element) {
         pin.name.toUpperCase(),
         pin.out ? "end" : "start",
       );
+    }
+    if (info && callLink) {
+      const activate = callLink(name, info.getAttribute("BlockType") || "");
+      const hit = add("rect", {
+        x: pos.x,
+        y: pos.y,
+        width: 150,
+        height: h,
+        fill: "transparent",
+        class: activate ? "tia-call-link" : "tia-call-unresolved",
+      });
+      const title = document.createElementNS(svg.namespaceURI, "title");
+      title.textContent = activate
+        ? `${name} · double-click / Enter`
+        : `${name} · target not available or ambiguous`;
+      hit.append(title);
+      if (activate) {
+        hit.setAttribute("role", "link");
+        hit.setAttribute("tabindex", "0");
+        hit.setAttribute("aria-label", name);
+        hit.setAttribute("data-block-call", name);
+        hit.addEventListener("dblclick", activate);
+        hit.addEventListener("keydown", (event) => {
+          const e = event as KeyboardEvent;
+          if (e.key === "Enter") {
+            e.preventDefault();
+            activate();
+          }
+        });
+      }
     }
     if (!defaults[k] && !info)
       text(pos.x, pos.y + h + 18, "Generic instruction · verify XML");

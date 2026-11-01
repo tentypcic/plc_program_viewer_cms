@@ -21,8 +21,31 @@ try {
   });
   await page.goto(server.resolvedUrls.local[0]);
   const result = await page.evaluate(async (files) => {
-    const { importTia, tiaView, parseTia } = await import("/app/tia.ts");
+    const { importTia, tiaView, parseTia, resolveTiaCall } = await import(
+      "/app/tia.ts"
+    );
     const p = importTia(files, "Reference");
+    if (
+      !resolveTiaCall(p, "DemoControl", "FC") ||
+      resolveTiaCall(p, "DemoControl", "FB") ||
+      resolveTiaCall(p, "Missing", "FC")
+    )
+      throw Error("Call resolution mismatch");
+    const duplicated = structuredClone(p);
+    const original = duplicated.nodes.find(
+      (n) => n.name === "DemoControl [FC7]",
+    );
+    const originalDoc = duplicated.documents.find(
+      (d) => d.nodeId === original.id,
+    );
+    duplicated.nodes.push({ ...original, id: "duplicate" });
+    duplicated.documents.push({
+      ...originalDoc,
+      id: "duplicate-doc",
+      nodeId: "duplicate",
+    });
+    if (resolveTiaCall(duplicated, "DemoControl", "FC"))
+      throw Error("Ambiguous target must not resolve");
     document.body.replaceChildren();
     for (const text of Object.values(files))
       document.body.append(tiaView(text));
@@ -95,11 +118,32 @@ try {
     .filter({ hasText: "SampleCycle [OB1]" })
     .click();
   await page.locator(".tia-network").first().waitFor();
+  const call = page.locator('[data-block-call="DemoControl"]');
+  await call.dblclick();
   await page
-    .getByRole("treeitem")
+    .locator(".node-title-line h2")
     .filter({ hasText: "DemoControl [FC7]" })
-    .click();
-  await page.locator(".tia-network").first().waitFor();
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("treeitem")
+      .filter({ hasText: "DemoControl [FC7]" })
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  await page.getByRole("tab", { name: "SampleCycle.xml", exact: true }).click();
+  await call.focus();
+  await page.keyboard.press("Enter");
+  await page
+    .locator(".node-title-line h2")
+    .filter({ hasText: "DemoControl [FC7]" })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("tab", { name: "DemoControl.xml", exact: true })
+      .count(),
+    1,
+  );
   assert.equal(await page.locator(".doc-chip").count(), 0);
   const program = page
     .getByRole("treeitem")

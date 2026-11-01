@@ -1600,3 +1600,85 @@ form > .dialog-actions {
 .tree-row .node-icon.safety {
   background: #ffe16b;
 }
+.tia-call-link {
+  cursor: pointer;
+}
+.tia-call-link:hover,
+.tia-call-link:focus-visible {
+  stroke: var(--accent);
+  stroke-width: 2;
+  outline: none;
+}
+/* Small, crisp engineering symbols inspired by the TIA project tree. */
+.tree-row .node-icon.folder::before {
+  left: 1px;
+  top: 2px;
+  width: 14px;
+  height: 12px;
+  border: 1px solid #b68b24;
+  border-radius: 0;
+  background: linear-gradient(90deg, #ffe172 0 28%, #fff4bd 28% 100%);
+}
+.tree-row .node-icon.folder.opened::before {
+  transform: none;
+  background: linear-gradient(90deg, #ffcf43 0 28%, #fff1a5 28% 100%);
+}
+.tree-row .node-icon.folder::after {
+  left: 6px;
+  top: 5px;
+  width: 3px;
+  height: 2px;
+  border: 0;
+  border-radius: 0;
+  background: #2782d0;
+  box-shadow:
+    4px 0 #2782d0,
+    0 4px #2782d0,
+    4px 4px #2782d0;
+}
+.tree-row .node-icon.ob {
+  color: #9650e6;
+}
+.tree-row .node-icon.fc {
+  color: #15bd3f;
+}
+.tree-row .node-icon.fb {
+  color: #168cf5;
+}
+.tree-row .node-icon.db {
+  color: #6159e9;
+}
+.tree-row .node-icon.ob::before,
+.tree-row .node-icon.fc::before,
+.tree-row .node-icon.fb::before {
+  inset: 3px 3px;
+  border-radius: 0;
+  border: 1px solid color-mix(in srgb, currentColor 65%, #222);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, currentColor 60%, white),
+    currentColor
+  );
+  box-shadow:
+    -3px -2px 0 -2px #394963,
+    -3px 1px 0 -2px #394963,
+    -3px 4px 0 -2px #394963,
+    3px -2px 0 -2px #394963,
+    3px 1px 0 -2px #394963,
+    3px 4px 0 -2px #394963;
+}
+.tree-row .node-icon.db::before {
+  border-color: #4740ba;
+  background: linear-gradient(90deg, #9c92ff, #5d50e0);
+}
+.tree-row .node-icon.db::after {
+  border-color: #554ac9;
+  background: #a79dff;
+}
+.tree-row .node-icon.udt,
+.tree-row .node-icon.tags {
+  color: #5149ac;
+}
+:root[data-theme="dark"] .tree-row .node-icon:not(.folder) {
+  filter: brightness(1.18);
+}
