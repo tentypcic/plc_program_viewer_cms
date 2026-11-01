@@ -30,6 +30,7 @@ try {
       matchingReferences,
       structuredText,
       parseSclHeader,
+      tiaSymbolIndex,
     } = await import("/app/tia.ts");
     const sample = files["Program blocks/DemoData.xml"];
     for (const rootType of [
@@ -68,6 +69,20 @@ try {
         '<Part UId="3" Name="Contact"><Negated Name="operand"/></Part>',
       );
     if (!tiaView(ladder).textContent.includes("S")) throw Error("SET coil");
+    const fbXml = files["Program blocks/DemoControl.xml"]
+      .replaceAll("SW.Blocks.FC", "SW.Blocks.FB")
+      .replace(
+        '<Member Name="RunRequest" Datatype="Bool"/>',
+        '<Member Name="RunRequest" Datatype="Bool" Remanence="NonRetain"><AttributeList><BooleanAttribute Name="ExternalAccessible">true</BooleanAttribute><BooleanAttribute Name="ExternalWritable">false</BooleanAttribute></AttributeList><Comment><MultiLanguageText Lang="en-US">Sample input</MultiLanguageText></Comment></Member>',
+      );
+    const fbView = tiaView(fbXml);
+    const fbRow = fbView.querySelector('[data-path="RunRequest"]');
+    if (
+      fbRow.querySelectorAll("td").length !== 11 ||
+      fbRow.querySelectorAll("input:checked").length !== 1 ||
+      !fbRow.textContent.includes("Sample input")
+    )
+      throw Error("FB IO metadata");
     const p = importTia(files, "Reference");
     if (
       !resolveTiaCall(p, "DemoControl", "FC") ||
@@ -110,6 +125,22 @@ try {
       matchingReferences(refs, "Demo").length
     )
       throw Error("Reference scope");
+    const index = tiaSymbolIndex(p);
+    if (
+      index.block("DemoControl", "FC") !== "%FC7" ||
+      index.operand("DemoFlag") !== "%M20.0" ||
+      index.block("Missing", "FB") ||
+      index.operand("#DemoFlag")
+    )
+      throw Error("Address resolution");
+    const callView = tiaView(
+      files["Program blocks/SampleCycle.xml"],
+      "en",
+      undefined,
+      index,
+    );
+    if (!callView.querySelector(".tia-address")?.textContent.includes("%FC7"))
+      throw Error("Call address label");
     document.body.replaceChildren();
     for (const text of Object.values(files))
       document.body.append(tiaView(text));

@@ -1781,3 +1781,10 @@ form > .dialog-actions {
   font-size: 12px;
   padding: 12px;
 }
+.tia-network text.tia-address {
+  fill: #087f98;
+  font-size: 10px;
+}
+:root[data-theme="dark"] .tia-network text.tia-address {
+  fill: #70d5ea;
+}

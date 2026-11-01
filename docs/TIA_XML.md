@@ -50,3 +50,9 @@ StructuredText inside a LAD block is rebuilt from tokens, accesses, instructions
 Networks containing branching or generic instructions carry a visible approximation notice. Long parameter names get wider boxes and horizontal scrolling; long labels have a full-name tooltip. The diagram remains a computed documentation layout. It does not execute safety or motion logic.
 
 A private integration check imported 306 XML and six SCL files, preserved all 312 document texts through a portable ZIP roundtrip, opened a mixed LAD/SCL block, and rendered an array DB and inherited technology interface. Private source files and screenshots are not committed. Public regression checks use independent synthetic samples.
+
+## Block interface and address annotations
+
+FC/FB/OB interfaces use a collapsible section tree, including empty exported sections. FB interface rows show exported defaults, Retain, Accessible/Writable/Visible/Setpoint/Supervision flags and localized comments. Missing attributes remain unknown rather than being inferred from the TIA UI.
+
+Calls show `%FCn`/`%FBn` from uniquely resolved XML block metadata. Global FB instances show their imported `%DBn` and symbolic name; multi-instances are not assigned a fabricated DB number. Exact tag names resolve to exported logical addresses such as `%MB1`. No byte/bit offsets are inferred for optimized DB fields. Names with conflicting addresses remain unannotated. InOut pins have a bidirectional marker, and `DeviceStates` places `Ret_Val` on the output side.

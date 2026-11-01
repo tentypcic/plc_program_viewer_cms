@@ -161,11 +161,52 @@ export function resolveTiaCall(project: Project, name: string, type: string) {
     ? matches[0]
     : undefined;
 }
+const symbolCache = new WeakMap<Project, TiaSymbolIndex>();
+export type TiaSymbolIndex = {
+  block: (name: string, type: string) => string | undefined;
+  operand: (name: string) => string | undefined;
+};
+export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
+  const cached = symbolCache.get(project);
+  if (cached) return cached;
+  const blocks = new Map<string, Set<string>>(),
+    tags = new Map<string, Set<string>>();
+  const put = (map: Map<string, Set<string>>, key: string, address: string) => {
+    const entries = map.get(key) || new Set<string>();
+    entries.add(address);
+    map.set(key, entries);
+  };
+  for (const d of project.documents) {
+    if (!/\.xml$/i.test(d.name) || !d.text) continue;
+    try {
+      const p = parseTia(d.text);
+      if (p.number && /^[0-9]+$/.test(p.number))
+        put(blocks, p.type + ":" + p.name, "%" + p.type + p.number);
+      for (const tag of all(p.root, "SW.Tags.PlcTag")) {
+        const a = child(tag, "AttributeList");
+        if (a && value(a, "LogicalAddress"))
+          put(tags, value(a, "Name"), value(a, "LogicalAddress"));
+      }
+    } catch {}
+  }
+  const unique = (map: Map<string, Set<string>>, key: string) => {
+    const set = map.get(key);
+    return set?.size === 1 ? [...set][0] : undefined;
+  };
+  const index = {
+    block: (name: string, type: string) => unique(blocks, type + ":" + name),
+    operand: (name: string) =>
+      name.startsWith("#") ? undefined : unique(tags, name),
+  };
+  symbolCache.set(project, index);
+  return index;
+}
 type CallLink = (name: string, type: string) => (() => void) | undefined;
 export function tiaView(
   text: string,
   lang: "pl" | "en" = "en",
   callLink?: CallLink,
+  symbols?: TiaSymbolIndex,
 ) {
   const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
   const { root, attr, name, type, number, technology } = parseTia(text);
@@ -181,66 +222,16 @@ export function tiaView(
       ),
     ),
   );
-  if (["DB", "UDT", "TAGS"].includes(type))
-    wrap.append(tiaDataTable(root, attr, type, name, lang));
-  else {
-    const table = html("table");
-    const header = html("tr");
-    for (const label of [
-      ui("Section / Address", "Sekcja / adres"),
-      ui("Name", "Nazwa"),
-      ui("Data type", "Typ danych"),
-      ui("Start value", "Wartość początkowa"),
-    ])
-      header.append(html("th", label));
-    table.append(header);
-    for (const section of Array.from(
-      all(attr, "Sections")[0]?.children || [],
-    ).filter((e) => e.localName === "Section")) {
-      const add = (member: Element, prefix = "") => {
-        const row = html("tr");
-        for (const v of [
-          section.getAttribute("Name") || "",
-          prefix + member.getAttribute("Name"),
-          member.getAttribute("Datatype") || "",
-          value(member, "StartValue"),
-        ])
-          row.append(html("td", v));
-        table.append(row);
-        for (const m of all(member, "Member").filter(
-          (c) =>
-            !c.parentElement?.closest("Member") ||
-            c.parentElement.closest("Member") === member,
-        ))
-          add(m, prefix + member.getAttribute("Name") + ".");
-      };
-      for (const m of Array.from(section.children).filter(
-        (c) => c.localName === "Member",
-      ))
-        add(m);
-    }
-    for (const tag of all(root, "SW.Tags.PlcTag")) {
-      const a = child(tag, "AttributeList")!;
-      const row = html("tr");
-      for (const v of [
-        value(a, "LogicalAddress"),
-        value(a, "Name"),
-        value(a, "DataTypeName"),
-        "",
-      ])
-        row.append(html("td", v));
-      table.append(row);
-    }
-    if (table.children.length > 1) {
-      const details = html("details");
-      details.open = true;
-      details.append(
-        html("summary", ui("Interface / data", "Interfejs / dane")),
-        table,
-      );
-      wrap.append(details);
-    }
-  }
+  const data = tiaDataTable(root, attr, type, name, lang);
+  if (["FC", "FB", "OB"].includes(type)) {
+    const details = html("details");
+    details.open = true;
+    details.append(
+      html("summary", ui("Block interface", "Interfejs bloku")),
+      data,
+    );
+    wrap.append(details);
+  } else wrap.append(data);
   if (technology)
     wrap.append(
       html(
@@ -313,7 +304,7 @@ export function tiaView(
             ),
           ),
         );
-      details.append(drawNetwork(net, callLink));
+      details.append(drawNetwork(net, callLink, symbols));
     } else if (all(unit, "StructuredText")[0]) {
       const pre = html("pre");
       pre.className = "code-view tia-scl";
@@ -354,7 +345,11 @@ export function tiaView(
   wrap.append(source);
   return wrap;
 }
-function drawNetwork(net: Element, callLink?: CallLink) {
+function drawNetwork(
+  net: Element,
+  callLink?: CallLink,
+  symbols?: TiaSymbolIndex,
+) {
   const parts = Array.from(all(net, "Parts")[0]?.children || []).filter((e) =>
     ["Part", "Call"].includes(e.localName),
   );
@@ -376,6 +371,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
     Sr: ["s", "r1", "q"],
     TON: ["IN", "PT", "Q", "ET"],
     Add: ["en", "in1", "in2", "eno", "out"],
+    DeviceStates: ["en", "LADDR", "MODE", "STATE", "eno", "Ret_Val"],
   };
   const metadata = (name: string) =>
     ["operand", "bit"].includes(name.toLowerCase());
@@ -386,7 +382,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
       all(part, "Parameter").find((p) => p.getAttribute("Name") === name);
     return param
       ? param.getAttribute("Section") === "Output"
-      : /^(out\d*|q|eno|et)$/i.test(name);
+      : /^(out\d*|q|eno|et|ret_val)$/i.test(name);
   };
   const pins = new Map(
     parts.map((p) => {
@@ -414,13 +410,34 @@ function drawNetwork(net: Element, callLink?: CallLink) {
         (e) => (e.getAttribute("Name") || "").length > 16,
       ),
     ) || [...accesses.values()].some((s) => s.length > 30);
-  const boxWidth = (uid: string) =>
-    roomy &&
-    !["Contact", "PContact", "NContact", "Coil", "SCoil", "RCoil"].includes(
-      kind(parts.find((p) => id(p) === uid)!),
+  const boxWidth = (uid: string) => {
+    const p = parts.find((p) => id(p) === uid)!;
+    if (
+      ["Contact", "PContact", "NContact", "Coil", "SCoil", "RCoil"].includes(
+        kind(p),
+      )
     )
-      ? 340
-      : 150;
+      return 150;
+    const list = pins.get(uid)!;
+    const left = Math.max(
+      0,
+      ...list.filter((p) => !p.out).map((p) => Math.min(38, p.name.length + 2)),
+    );
+    const right = Math.max(
+      0,
+      ...list.filter((p) => p.out).map((p) => Math.min(38, p.name.length + 2)),
+    );
+    const title = all(p, "CallInfo")[0]?.getAttribute("Name") || kind(p);
+    return Math.max(
+      roomy ? 340 : 150,
+      (left + right) * 7.3 + 24,
+      Math.min(38, title.length) * 8 + 20,
+    );
+  };
+  const step = Math.max(
+    roomy ? 940 : 320,
+    Math.max(150, ...parts.map((p) => boxWidth(id(p)))) + (roomy ? 600 : 170),
+  );
   const pitch = Math.max(
     210,
     ...[...pins.values()].map(
@@ -430,7 +447,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
           list.filter((p) => p.out).length,
           list.filter((p) => !p.out).length,
         ) *
-          24 +
+          32 +
         80,
     ),
   );
@@ -450,10 +467,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
           );
     }
   const columns = Math.max(0, ...levels.values()) + 1;
-  const width = Math.max(
-    1000,
-    columns * (roomy ? 940 : 320) + (roomy ? 400 : 180),
-  );
+  const width = Math.max(1000, columns * step + (roomy ? 400 : 180));
   const positions = new Map<string, { x: number; y: number }>();
   const rows = new Map<number, number>();
   for (const p of parts) {
@@ -461,7 +475,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
     const row = rows.get(level) || 0;
     rows.set(level, row + 1);
     positions.set(id(p), {
-      x: (roomy ? 340 : 200) + level * (roomy ? 940 : 320),
+      x: (roomy ? 340 : 200) + level * step,
       y: 60 + row * pitch,
     });
   }
@@ -528,7 +542,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
       row = 1;
     return {
       x: pos.x + (pin.out ? boxWidth(uid) : 0),
-      y: pos.y + 44 + row * 24,
+      y: pos.y + 44 + row * 32,
       out: pin.out,
     };
   };
@@ -556,6 +570,15 @@ function drawNetwork(net: Element, callLink?: CallLink) {
             "middle",
             "tia-operand",
           );
+          const addr = symbols?.operand(accesses.get(id(access)) || "");
+          if (addr)
+            text(
+              pos.x + 75,
+              pos.y + (name.toLowerCase() === "bit" ? 104 : -26),
+              addr,
+              "middle",
+              "tia-address",
+            );
           continue;
         }
         const p = point(id(c), name);
@@ -568,6 +591,15 @@ function drawNetwork(net: Element, callLink?: CallLink) {
           p.out ? "start" : "end",
           "tia-operand",
         );
+        const addr = symbols?.operand(accesses.get(id(access)) || "");
+        if (addr)
+          text(
+            p.x + (p.out ? 22 : -22),
+            p.y - 10,
+            addr,
+            p.out ? "start" : "end",
+            "tia-address",
+          );
       }
     // Open connectors have no assigned value; do not invent a live value.
     if (all(w, "OpenCon").length)
@@ -623,7 +655,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
           list.filter((p) => p.out).length,
           list.filter((p) => !p.out).length,
         ) *
-          24,
+          32,
     );
     add("rect", {
       x: pos.x,
@@ -647,10 +679,33 @@ function drawNetwork(net: Element, callLink?: CallLink) {
       "tia-instruction",
     );
     const instance = all(p, "Instance")[0];
-    if (instance)
+    const callAddress =
+      info && symbols?.block(name, info.getAttribute("BlockType") || "");
+    const instanceName = instance && symbol(instance);
+    const instanceAddress =
+      instanceName &&
+      !instanceName.startsWith("#") &&
+      symbols?.block(instanceName, "DB");
+    if (callAddress)
       text(
         pos.x + boxWidth(id(p)) / 2,
         pos.y - 10,
+        callAddress,
+        "middle",
+        "tia-address",
+      );
+    if (instanceAddress)
+      text(
+        pos.x + boxWidth(id(p)) / 2,
+        pos.y - (callAddress ? 46 : 28),
+        instanceAddress,
+        "middle",
+        "tia-address",
+      );
+    if (instance)
+      text(
+        pos.x + boxWidth(id(p)) / 2,
+        pos.y - (callAddress ? 28 : 10),
         symbol(instance),
         "middle",
         "tia-operand",
@@ -660,7 +715,17 @@ function drawNetwork(net: Element, callLink?: CallLink) {
       text(
         pt.x + (pin.out ? -5 : 5),
         pt.y + 4,
-        pin.name.toUpperCase(),
+        (all(p, "Parameter")
+          .find((e) => e.getAttribute("Name") === pin.name)
+          ?.getAttribute("Section") === "InOut" ||
+        (k === "DeviceStates" && pin.name === "STATE")
+          ? "↔ "
+          : "") +
+          (info && !/^(en|eno)$/i.test(pin.name)
+            ? pin.name
+            : pin.name === "Ret_Val"
+              ? pin.name
+              : pin.name.toUpperCase()),
         pin.out ? "end" : "start",
       );
     }
@@ -781,10 +846,12 @@ export function tiaReferences(project: Project) {
               const section = param?.getAttribute("Section");
               const kind = part?.getAttribute("Name");
               usages.add(
-                section === "InOut" || (kind === "Sr" && pin === "operand")
+                section === "InOut" ||
+                  (kind === "Sr" && pin === "operand") ||
+                  (kind === "DeviceStates" && pin === "STATE")
                   ? "R/W"
                   : section === "Output" ||
-                      /^(out\d*|q|et|eno)$/i.test(pin) ||
+                      /^(out\d*|q|et|eno|ret_val)$/i.test(pin) ||
                       (kind === "Coil" && pin === "operand")
                     ? "W"
                     : section === "Input" ||
@@ -830,6 +897,7 @@ function tiaDataTable(
   lang: "pl" | "en",
 ) {
   const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
+  const interfaceBlock = ["FB", "FC", "OB"].includes(type);
   const host = html("div");
   host.className = "tia-data-grid";
   host.append(html("h3", name));
@@ -842,10 +910,20 @@ function tiaDataTable(
     ui("Data type", "Typ danych"),
     type === "TAGS"
       ? ui("Address", "Adres")
-      : type === "UDT"
+      : type === "UDT" || interfaceBlock
         ? ui("Default value", "Wartość domyślna")
         : ui("Start value", "Wartość początkowa"),
     ...(type === "UDT" ? [] : ["Retain"]),
+    ...(interfaceBlock
+      ? [
+          ui("Accessible", "Dostępne"),
+          ui("Writable", "Zapis"),
+          ui("Visible", "Widoczne"),
+          "Setpoint",
+          ui("Supervision", "Nadzór"),
+          ui("Comment", "Komentarz"),
+        ]
+      : []),
   ];
   for (const label of columns) header.append(html("th", label));
   head.append(header);
@@ -864,6 +942,8 @@ function tiaDataTable(
     open?: boolean;
     group?: boolean;
     load?: () => Row[];
+    flags?: (boolean | undefined)[];
+    comment?: string;
   };
   const defaults = (dt: string) =>
     /^bool$/i.test(dt)
@@ -895,6 +975,26 @@ function tiaDataTable(
       start: explicit ? explicit.textContent || "" : defaults(dt),
       inferred: !explicit,
       retain: retain(m, inherited),
+      flags: [
+        "ExternalAccessible",
+        "ExternalWritable",
+        "ExternalVisible",
+        "SetPoint",
+        "Supervision",
+      ].map((key) => {
+        const flag = all(
+          child(m, "AttributeList") || m,
+          "BooleanAttribute",
+        ).find((e) => e.getAttribute("Name") === key);
+        return flag ? flag.textContent === "true" : undefined;
+      }),
+      comment: child(m, "Comment")
+        ? (
+            all(child(m, "Comment")!, "MultiLanguageText").find((e) =>
+              e.getAttribute("Lang")?.startsWith(lang),
+            ) || all(child(m, "Comment")!, "MultiLanguageText")[0]
+          )?.textContent || ""
+        : "",
     };
     const children = members(m);
     if (children.length) {
@@ -1024,6 +1124,26 @@ function tiaDataTable(
           }
         }
         tr.append(retainCell);
+      }
+      if (interfaceBlock) {
+        for (const flag of row.flags || [
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+        ]) {
+          const td = html("td");
+          if (!row.group && flag !== undefined) {
+            const mark = html("input");
+            mark.type = "checkbox";
+            mark.checked = flag;
+            mark.disabled = true;
+            td.append(mark);
+          } else if (!row.group) td.textContent = "—";
+          tr.append(td);
+        }
+        tr.append(html("td", row.comment || ""));
       }
       body.append(tr);
       if (row.open) for (const c of row.children || []) add(c, depth + 1);

@@ -5,6 +5,7 @@ import {
   tiaReferences,
   matchingReferences,
   parseTia,
+  tiaSymbolIndex,
 } from "./tia";
 import {
   el,
@@ -1673,13 +1674,21 @@ async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
     const code = el("code");
     const text = doc.text ?? (await (await repo.asset(doc.id))!.text());
     if (epoch !== contentEpoch) return;
-    if (/\.xml$/i.test(doc.name) && /<SW\.(Blocks|Types|Tags)\./.test(text)) {
+    if (
+      /\.xml$/i.test(doc.name) &&
+      /<SW\.(Blocks|Types|Tags|TechnologicalObjects)\./.test(text)
+    ) {
       try {
         content.append(
-          tiaView(text, lang, (name, type) => {
-            const target = resolveTiaCall(p, name, type);
-            return target ? () => openDoc(target.id) : undefined;
-          }),
+          tiaView(
+            text,
+            lang,
+            (name, type) => {
+              const target = resolveTiaCall(p, name, type);
+              return target ? () => openDoc(target.id) : undefined;
+            },
+            tiaSymbolIndex(p),
+          ),
         );
         return;
       } catch (error) {
