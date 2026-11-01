@@ -1099,7 +1099,7 @@ function renderWorkspace(main: HTMLElement) {
         row.setAttribute("aria-expanded", String(expanded.has(n.id)));
         row.append(
           button(
-            expanded.has(n.id) ? "⌄" : "›",
+            expanded.has(n.id) ? "▾" : "▸",
             () => toggle(n),
             "tree-toggle",
             t(expanded.has(n.id) ? "collapse" : "expand"),
@@ -1111,19 +1111,23 @@ function renderWorkspace(main: HTMLElement) {
         el(
           "span",
           "node-icon " +
-            n.blockType.toLowerCase() +
+            (n.kind === "group"
+              ? "folder" + (expanded.has(n.id) ? " opened" : "")
+              : n.blockType.toLowerCase()) +
             (n.safety ? " safety" : ""),
-          n.kind === "group" ? "▰" : n.blockType,
+          "",
         ),
         el("span", "node-name", label(n)),
       );
       row.title = pathName(p, n.id);
       row.onclick = (e) => {
-        if ((e.target as HTMLElement).closest("button")) return;
+        if ((e.target as HTMLElement).closest("button") || e.detail > 1) return;
         if (n.kind === "group") toggle(n);
         else chooseNode(n);
       };
       row.onkeydown = (e) => {
+        if ((e.target as HTMLElement).closest("button")) return;
+        if (["ArrowLeft", "ArrowRight"].includes(e.key)) e.preventDefault();
         if (e.key === "Enter") {
           e.preventDefault();
           if (n.kind === "group") toggle(n);
@@ -1163,9 +1167,22 @@ function renderWorkspace(main: HTMLElement) {
   }
   function toggle(n: PlcNode) {
     expanded.has(n.id) ? expanded.delete(n.id) : expanded.add(n.id);
+    const focused =
+      document.activeElement?.closest<HTMLElement>("[data-node]")?.dataset.node;
+    const scroll = tree.scrollTop;
+    flat.length = 0;
+    visit(null, 1);
     remember();
     start = -1;
+    tree.scrollTop = Math.min(
+      scroll,
+      Math.max(0, flat.length * TREE_ROW_HEIGHT - tree.clientHeight),
+    );
     windowRows();
+    if (focused)
+      tree
+        .querySelector<HTMLElement>(`[data-node="${focused}"]`)
+        ?.focus({ preventScroll: true });
   }
   tree.onscroll = () => {
     treePositions.set(p.id, tree.scrollTop);

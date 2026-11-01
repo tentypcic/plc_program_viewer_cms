@@ -1474,3 +1474,129 @@ form > .dialog-actions {
 .tia-network text {
   fill: currentColor;
 }
+
+/* TIA-style tree symbols, drawn locally without vendor image assets. */
+.tree-row {
+  gap: 5px;
+  font-size: 12px;
+}
+.tree-root {
+  border-top: 0;
+}
+.tree-group .node-name {
+  font-weight: 400;
+}
+.tree-root .node-name {
+  font-weight: 600;
+}
+.tree-toggle {
+  font-size: 13px;
+  color: var(--text);
+  width: 15px;
+  min-width: 15px;
+}
+.tree-row .node-icon {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 16px;
+  width: 16px;
+  min-width: 16px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 1px;
+  background: none;
+  color: #2584cb;
+}
+.node-icon::before,
+.node-icon::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+}
+.tree-row .node-icon.folder::before {
+  left: 1px;
+  top: 2px;
+  width: 14px;
+  height: 11px;
+  border: 1px solid #aa8d3f;
+  background: linear-gradient(#fff1b0, #e4bd58);
+  border-radius: 1px;
+}
+.tree-row .node-icon.folder::after {
+  left: 1px;
+  top: 0;
+  width: 7px;
+  height: 3px;
+  border: 1px solid #aa8d3f;
+  border-bottom: 0;
+  background: #f8df8c;
+  border-radius: 1px 1px 0 0;
+}
+.tree-row .node-icon.folder.opened::before {
+  transform: skewX(-12deg);
+  transform-origin: bottom;
+  background: linear-gradient(#ffe797, #f2cf70);
+}
+.tree-row .node-icon.ob {
+  color: #a147d7;
+}
+.tree-row .node-icon.fc {
+  color: #16a44b;
+}
+.tree-row .node-icon.fb {
+  color: #2489e2;
+}
+.tree-row .node-icon.db {
+  color: #7657cf;
+}
+.tree-row .node-icon:not(.folder)::before {
+  inset: 3px 2px;
+  border: 1px solid color-mix(in srgb, currentColor 80%, #000);
+  background: currentColor;
+  box-shadow:
+    -2px 0 0 -1px currentColor,
+    2px 0 0 -1px currentColor;
+}
+.tree-row .node-icon:not(.folder)::after {
+  left: 5px;
+  top: 5px;
+  width: 6px;
+  height: 1px;
+  background: #ffffffc9;
+  box-shadow: 0 3px #ffffffc9;
+}
+.tree-row .node-icon.db::before {
+  inset: 1px 3px;
+  border-radius: 50% / 20%;
+  background: linear-gradient(90deg, #a58aef, #694ac5);
+}
+.tree-row .node-icon.db::after {
+  left: 3px;
+  top: 1px;
+  width: 10px;
+  height: 4px;
+  border: 1px solid #6343ab;
+  border-radius: 50%;
+  background: #b39aef;
+  box-shadow: none;
+}
+.tree-row .node-icon.udt::before,
+.tree-row .node-icon.tags::before {
+  inset: 0 3px;
+  border-radius: 0;
+  background: var(--surface);
+}
+.tree-row .node-icon.udt::after,
+.tree-row .node-icon.tags::after {
+  left: 6px;
+  top: 4px;
+  width: 5px;
+  background: currentColor;
+  box-shadow:
+    0 3px currentColor,
+    0 6px currentColor;
+}
+.tree-row .node-icon.safety {
+  background: #ffe16b;
+}

@@ -106,8 +106,42 @@ try {
     .filter({ hasText: "Bloki programu" });
   await program.click();
   assert.equal(await program.getAttribute("aria-expanded"), "false");
+  assert.equal(
+    await page
+      .getByRole("treeitem")
+      .filter({ hasText: "DemoControl [FC7]" })
+      .count(),
+    0,
+  );
   assert.equal(await page.locator(".tia-network").count(), 2);
   await program.click();
+  assert.equal(await program.getAttribute("aria-expanded"), "true");
+  assert.equal(
+    await page
+      .getByRole("treeitem")
+      .filter({ hasText: "DemoControl [FC7]" })
+      .count(),
+    1,
+  );
+  await program.focus();
+  await page.keyboard.press("ArrowLeft");
+  assert.equal(await program.getAttribute("aria-expanded"), "false");
+  assert.equal(
+    await program.evaluate((e) => e === document.activeElement),
+    true,
+  );
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await program.getAttribute("aria-expanded"), "true");
+  assert.equal(
+    await page
+      .getByRole("treeitem")
+      .filter({ hasText: "DemoControl [FC7]" })
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  await program.getByRole("button").click();
+  assert.equal(await program.getAttribute("aria-expanded"), "false");
+  await program.getByRole("button").click();
   assert.equal(await program.getAttribute("aria-expanded"), "true");
   await page.reload();
   await page.locator(".tia-network").first().waitFor();
