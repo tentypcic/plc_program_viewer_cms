@@ -69,6 +69,48 @@ try {
         '<Part UId="3" Name="Contact"><Negated Name="operand"/></Part>',
       );
     if (!tiaView(ladder).textContent.includes("S")) throw Error("SET coil");
+    const demo = files["Program blocks/DemoControl.xml"];
+    const netXml = (parts, wires) =>
+      demo.replace(
+        /<FlgNet[\s\S]*?<\/FlgNet>/,
+        `<FlgNet><Parts>${parts}</Parts><Wires>${wires}</Wires></FlgNet>`,
+      );
+    const pin = (id, name) => `<NameCon UId="${id}" Name="${name}"/>`;
+    const wire = (con) => `<Wire>${con}</Wire>`;
+    const parallel = netXml(
+      '<Part Name="Contact" UId="1"/><Part Name="Contact" UId="2"/><Part Name="O" UId="3"/><Part Name="Coil" UId="4"/>',
+      wire("<Powerrail/>" + pin(1, "in") + pin(2, "in")) +
+        wire(pin(1, "out") + pin(3, "in1")) +
+        wire(pin(2, "out") + pin(3, "in2")) +
+        wire(pin(3, "out") + pin(4, "in")),
+    );
+    const parallelView = tiaView(parallel);
+    if (
+      parallelView.querySelectorAll("circle").length < 3 ||
+      !parallelView.querySelector('[data-kind="O"]')
+    )
+      throw Error("OR wire junction");
+    const fanout = netXml(
+      '<Part Name="Contact" UId="1"/><Part Name="Move" UId="2"/><Part Name="Move" UId="3"/>',
+      wire("<Powerrail/>" + pin(1, "in")) +
+        wire(pin(1, "out") + pin(2, "en") + pin(3, "en")),
+    );
+    const fanoutView = tiaView(fanout);
+    const moves = [...fanoutView.querySelectorAll('[data-kind="Move"]')];
+    if (
+      moves.length !== 2 ||
+      moves[0].dataset.layoutY === moves[1].dataset.layoutY ||
+      fanoutView.querySelectorAll("circle").length < 2
+    )
+      throw Error("MOVE fanout layout");
+    const safetyView = tiaView(
+      fanout.replace(
+        "<Number>7</Number>",
+        "<Number>7</Number><ProgrammingLanguage>F_LAD</ProgrammingLanguage>",
+      ),
+    );
+    if (!safetyView.querySelector('rect[fill*="tia-safety-title"]'))
+      throw Error("F block styling");
     const fbXml = files["Program blocks/DemoControl.xml"]
       .replaceAll("SW.Blocks.FC", "SW.Blocks.FB")
       .replace(

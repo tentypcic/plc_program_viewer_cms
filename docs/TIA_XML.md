@@ -56,3 +56,9 @@ A private integration check imported 306 XML and six SCL files, preserved all 31
 FC/FB/OB interfaces use a collapsible section tree, including empty exported sections. FB interface rows show exported defaults, Retain, Accessible/Writable/Visible/Setpoint/Supervision flags and localized comments. Missing attributes remain unknown rather than being inferred from the TIA UI.
 
 Calls show `%FCn`/`%FBn` from uniquely resolved XML block metadata. Global FB instances show their imported `%DBn` and symbolic name; multi-instances are not assigned a fabricated DB number. Exact tag names resolve to exported logical addresses such as `%MB1`. No byte/bit offsets are inferred for optimized DB fields. Names with conflicting addresses remain unannotated. InOut pins have a bidirectional marker, and `DeviceStates` places `Ret_Val` on the output side.
+
+## Network sheet layout
+
+Network headers use compact gray strips and the network body uses the current theme's paper surface. Operand names wrap across lines with the full name retained in a tooltip. Contact chains with a unique downstream pin align to that pin when it does not collide with an existing instruction.
+
+MOVE instructions have EN/ENO and IN/OUT1 pins. FlgNet `O` parts are shown as wire junctions; multi-connector wires use shared buses with connection dots. These are improvements for the tested reset and MOVE fanout shapes, not a guarantee of identical TIA routing for all graphs. Complex networks retain the approximation notice. F-language block headers use a yellow safety color from XML metadata only; it is not online status or a safety verification.

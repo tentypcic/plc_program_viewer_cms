@@ -1788,3 +1788,29 @@ form > .dialog-actions {
 :root[data-theme="dark"] .tia-network text.tia-address {
   fill: #70d5ea;
 }
+/* TIA-inspired network sheets. */
+.tia-view details[data-network] {
+  padding: 0 12px 12px;
+  border-radius: 0;
+  background: var(--surface);
+}
+.tia-view details[data-network] > summary {
+  margin: 0 -12px 12px;
+  padding: 5px 12px;
+  background: var(--tia-network-heading, #d9dce1);
+  border-bottom: 1px solid var(--line);
+}
+.tia-view details[data-network] > p {
+  margin: 8px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.tia-view details[data-network] .tia-network {
+  margin-top: 0;
+}
+:root[data-theme="dark"] {
+  --tia-network-heading: #2b3b4c;
+}
+:root[data-theme="dark"] {
+  --tia-safety-title: #77671c;
+}
