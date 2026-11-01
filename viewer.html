@@ -1,92 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>PLC program viewer</title>
-    <link rel="icon" type="image/png" href="src/favicon.png">
-    <link rel="stylesheet" href="src/viewer-style.css">
-</head>
-<body>
-	<header>
-		<a href="index.html" class="back-link" aria-label="Back to projects">← Back to projects</a>
-		<h1>PLC programme viewer</h1>
-		<p>
-			<span id="titleText">Example</span>
-			<span id="dateText" class="date-chip" title="Project last edit"></span>
-			<button id="editTitleBtn" style="display:none; font-size:12px; margin-left:4px;">✏️</button>
-		</p>
-	</header>
-	
-	<div class="main">
-		<div class="menu">
-			<div class="menu-controls">
-				<button id="saveJson" type="button"><span>💾</span> Export .json</button>
-				<button id="helpBtn" type="button"><span>📘</span> Instruction</button>
-				<button id="toggleEdit" type="button"><span>✏️</span> Edit Mode</button>
-				<button id="addBlock" type="button" style="display:none;"><span>➕</span> Add Block</button>
-				<button id="addGroup" type="button" style="display:none;"><span>📁</span> Add Group</button>
-				<button id="reset" type="button" style="display:none;"><span>🔄</span> Reset</button>
-				<input type="file" id="fileInput" accept=".json" style="display:none">
-			</div>
-			<div id="menuContainer" class="menu"></div>
-		</div>
-		<div class="content">
-			<iframe id="pdfViewer" src="default.html" allow="autoplay"></iframe>
-		</div>
-	</div>
-
-	<!-- Add dialog -->
-	<div id="overlay" style="display:none">
-		<div id="dialog">
-			<h3 id="dialogTitle"></h3>
-			<div id="formError" class="error-message" style="display:none;"></div>
-			<div class="form-group">
-				<label id="nameLabel" for="newName"></label>
-				<input id="newName" type="text">
-			</div>
-			<div id="linkField" class="form-group">
-				<label for="newLink">PDF Link:</label>
-				<input id="newLink" type="text">
-			</div>
-			<div id="fbOptions" class="checkbox-group" style="display:none;">
-				<label for="createFBlock">
-					<input type="checkbox" id="createFBlock">
-					Create F-Block (yellow icon)
-				</label>
-			</div>
-			<div class="form-group">
-				<label for="targetPath">Target location:</label>
-				<select id="targetPath"></select>
-			</div>
-			<div class="dialog-actions">
-				<button id="confirmAdd" type="button">Add</button>
-				<button id="cancelAdd" type="button">Cancel</button>
-			</div>
-		</div>
-	</div>
-
-	<!-- Edit dialog -->
-	<div id="editOverlay" style="display:none">
-		<div id="editDialog">
-			<h3>Edit Item</h3>
-			<div class="form-group">
-				<label for="editText">Name:</label>
-				<input id="editText" type="text">
-			</div>
-			<div class="form-group" id="editLinkGroup">
-				<label for="editLink">Link:</label>
-				<input id="editLink" type="text">
-			</div>
-			<div id="editError" class="error-message" style="display:none;"></div>
-			<div class="dialog-actions">
-				<button id="confirmEdit" type="button">Save</button>
-				<button id="cancelEdit" type="button">Cancel</button>
-			</div>
-		</div>
-	</div>
-	
-	<footer><a href="https://github.com/tentypcic" target="_blank">Created by tentypcic © 2025</a></footer>
-	
-	<script src="src/viewer-app.js"></script>
-</body>
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; connect-src 'self' https: http:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta
+      name="description"
+      content="Lokalna biblioteka dokumentacji PLC — projekty, PDF i SCL."
+    />
+    <title>PLC Viewer — dokumentacja PLC</title>
+    <link rel="icon" href="./src/favicon.png" />
+  </head>
+  <body>
+    <div id="app">
+      <p style="padding: 2rem; font-family: system-ui">
+        PLC Viewer · Wczytywanie…
+      </p>
+    </div>
+    <script type="module" src="/app/main.ts"></script>
+  </body>
 </html>
+

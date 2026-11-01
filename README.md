@@ -1,135 +1,73 @@
-# PLC Programme Viewer CMS
+# PLC Viewer
 
-<p align="center">
-  <img src="screenshot.png" alt="PLC Programme Viewer screenshot" width="600">
-</p>
-
-<p align="center">
-	Project in pure <strong>HTML + CSS + JS</strong> (no backend)  
-	<br />
-	<a href="https://tentypcic.github.io/plc_program_viewer_cms/">View demo</a>
-	·
-	<a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a>
-</p>
-
----
+<p align="center"><img src="docs/screenshots/overview.jpg" alt="PLC Viewer project library" width="900"></p>
+<p align="center">Local PLC documentation, built with <strong>TypeScript, Vite, IndexedDB and PDF.js</strong>.<br><a href="https://plc-viewer-cms.tentypcic.chatgpt.site">Open in Sites</a> · <a href="https://tentypcic.github.io/plc_program_viewer_cms/">GitHub Pages</a> · <a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a></p>
 
 ## 🧠 About The Project
 
-**PLC Programme Viewer CMS** is a lightweight, browser-based tool for managing and viewing Siemens TIA Portal program documentation.  
+**PLC Viewer** develops PLC Programme Viewer CMS into a local library for Siemens TIA Portal documentation. Organize blocks and groups, read PDF/SCL, search documents and keep portable ZIP backups. The interface supports Polish and English.
 
-It helps engineers **export blocks as PDFs, organize them into trees, and review them directly in the browser** – all without installing additional software or servers.  
-
-All data is saved **locally** in the browser via `localStorage` or exported/imported as `.json` files.
-
----
+No backend, accounts or project uploads. User documentation stays in browser IndexedDB. The version 2 modernization is now included in `main`.
 
 ## 🛠 Features
 
-- 📁 **Project list manager**
-  - Add, rename, duplicate, delete, or export/import projects (`projects.json`)
-  - Quick search by name, description, or date
-  - Pinned projects support (priority at the top)
+- Project catalog, descriptions, pinning, duplication, trash and restore.
+- Groups/subgroups, explicit OB / FB / FC / DB / UDT / TAGS / OTHER types and F-block labels.
+- Virtualized tree, context menus, document tabs, movable nodes and a resizable workspace.
+- Read/edit modes, light/dark themes and a remembered last view.
+- Multiple local PDFs/text files per block, notes, alarms, remedies and sequence information.
+- PDF.js pages/zoom and text indexing for search; indexing is not OCR.
+- SCL lexical highlighting, text comparison and project comparison by UUID.
+- Global search, legacy JSON migration, schema-v2 JSON and portable ZIP with local attachments.
+- Transactions, revision checks, cross-tab conflict messages and up to 20 earlier project snapshots.
 
-- 🧱 **Viewer**
-  - Organize blocks into **groups** and **subgroups**
-  - Add/edit **OB / FB / FC / DB / UDT / Tags**
-  - Optional **F-Blocks** with yellow icons
-  - Inline editing of names and links
-  - Embedded **PDF viewer** (`iframe`)
-  - Reset to default template
-
-- 💾 **Persistence**
-  - Automatic saving to `localStorage`
-  - Export/import single project or full list as JSON
-
-- 🌍 **Instructions panel**
-  - Built-in multilingual guide (PL / EN)
-  - Step-by-step screenshots on exporting blocks and adding them to the project tree
-
-- 🧠 **No backend required** – works fully offline
-
----
-
-## 📂 Project Structure
-
-- **`index.html`** – Project list (add, search, manage, import/export)  
-- **`viewer.html`** – Project viewer (tree + PDF preview + edit mode)  
-- **`default.html`** – Instruction page (multilingual)  
-- **`404.html`** – Redirect / slug handler for GitHub Pages  
-- **`src/*.js`** – Application logic (`index-app.js`, `viewer-app.js`)  
-- **`src/*.css`** – Styling (`index-style.css`, `viewer-style.css`)  
-- **`images/`** – Icons and screenshots for help  
-
----
+AST analysis, semantic references, dependency graphs and syntax folding have contracts, not working language-analysis implementations. Direct TIA `.ap*` / `.zap*` import is unsupported. See [architecture](docs/ARCHITECTURE_PL.md).
 
 ## 🚀 Getting Started
 
-1. Clone or download this repository  
-2. Open `index.html` in a modern browser  
-3. Use the toolbar to:
-   - ➕ Add a new project  
-   - 📂 Import/export `projects.json`  
-   - 🧱 Open empty template  
+Requires Node.js 22.18+ or Node.js 24.
 
-> ⚡ Changes are **saved locally** in your browser.  
-> To share or back up work, export as `.json` and re-import later.
+```sh
+npm ci
+npm run dev
+```
 
----
+Open the HTTP URL printed by Vite. Do not double-click source HTML. The production build is `dist/`:
 
-## 📄 File Types
+```sh
+npm test
+npm run build
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
 
-In order for the block to have the correct style, you need to give it the appropriate tag in the name, e.g., **`Block [FC...]`** based on the example, the block we are adding has the Function block style.
+## 💾 Data and Recovery
 
-| Tag        | Meaning              |Style                          |
-|------------|----------------------|-------------------------------|
-| `[OB]`     | Organization block   |<img src="images/ob.png">      |
-| `[FB]`     | Function block       |<img src="images/fb.png">      |
-| `[FC]`     | Function             |<img src="images/fc.png">      |
-| `[DB]`     | Data block           |<img src="images/db.png">      |
-| `Tags`     | PLC tag table        |<img src="images/plc_tags.png">|
-| `UDT`      | User-defined data    |<img src="images/udt.png">     |
-| `F-Block`  | Safety block (yellow)|<img src="images/f_ob.png">    |
+Before upgrading, export `projects.json` from the old viewer. Migration reads `ppv.projects` or `menuData`, preserves original localStorage keys, and stores a raw backup and migration marker transactionally.
 
+Use **ZIP backup** for portable copies: JSON contains structure/text, not local PDF bytes. History is local and is removed with site data. Different domains, including GitHub Pages and Sites, have independent databases; move your documentation with an exported backup.
 
----
+## 🧪 Verification
 
-## 📖 Instruction (Quick Preview)
+**23 tests** and the TypeScript/production build passed on 1 November 2026. Coverage includes migration, ZIP paths/attachments, schema validation, concurrent writes, rollback, history and UUID creation on HTTP hosts without `crypto.randomUUID`.
 
-### 1. Exporting blocks from TIA Portal
-<p align="center">
-  <img src="images/Tree_TIA.png" alt="TIA Portal block tree" width="320">
-  <img src="images/print.png" alt="Print to PDF" width="320">
-</p>
+The E2E suite targets the production build under `/plc_program_viewer_cms/`. Its existence is not evidence of a successful run. Chromium UI checks include creating and reopening a project; other browsers and actual large PDF collections need separate checks.
 
-Right-click a block → **Print…** → choose *Microsoft Print to PDF* → save with block name.  
+## ⚠️ Limits
 
----
+- JSON/ZIP: 100 MiB input; ZIP: 250 MiB expanded. PDF: 50 MiB. Text: 2 MiB and 2 million characters; UTF-8 or BOM-marked UTF-16.
+- Up to 2,000 projects per import, 20,000 nodes/documents per project and 64 tree levels; legacy depth is 32.
+- Available browser storage varies. Remote PDFs may require CORS; ZIP retains their URL rather than downloading them silently.
+- No cloud sync, service worker or guaranteed offline reload. Export independent backups.
+- Sites starts owner-private; repository visibility and hosting access are separate.
 
-### 2. Adding blocks to the project tree
-<p align="center">
-  <img src="images/viewer_0.png" alt="Main menu" width="320">
-  <img src="images/viewer_1.png" alt="Edit mode menu" width="320">
-</p>
+## 📂 Documentation
 
-- Click **✏️ Edit Mode**  
-- Press **➕ Add Block**  
-- Fill in block name with `Tag` (e.g Main [OB1]) + PDF path (e.g. `pdf/Main_OB1.pdf`)  
-- Optionally mark **F-Block**  
+[User guide](docs/USER_GUIDE_PL.md) · [Data schema](docs/SCHEMA_V2_PL.md) · [Architecture](docs/ARCHITECTURE_PL.md) · [Release notes](docs/RELEASE_V2_PL.md)
 
-<p align="center">
-  <img src="images/add_block.png" alt="Add block window" width="320">
-  <img src="images/viewer_2.png" alt="Block added" width="320">
-</p>
+The detailed guides remain in Polish. Future import/analysis work must distinguish parsed, resolved and executable support.
 
----
+## 🧑‍💻 Author and License
 
-## 🧑‍💻 Author
+Created by [tentypcic](https://github.com/tentypcic). Distributed under the [MIT License](LICENSE).
 
-Created by [tentypcic](https://github.com/tentypcic)  © 2025
-
----
-
-## 📄 License
-
-Distributed under the **MIT License**.  

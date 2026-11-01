@@ -1,102 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>PLC programme viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" type="image/png" href="src/favicon.png">
-  <link rel="stylesheet" href="src/index-style.css">
-</head>
-<body>
-<header>
-  <h1>PLC programme viewer</h1>
-  <p>Manage your project list, import/export, and open in the viewer</p>
-</header>
-
-<div class="wrap">
-  <div class="toolbar">
-    <button id="addBtn" class="btn">➕ Add project (.json)</button>
-    <button id="openDefaultBtn" class="btn">🧱 Open empty template</button>
-    <button id="exportBtn" class="btn">💾 Export projects.json</button>
-    <label class="btn" for="importFile">📂 Import projects.json</label>
-    <button id="helpBtn" class="btn" aria-expanded="false">📘 Instruction</button>
-    <input id="importFile" type="file" accept=".json" />
-    <input id="pickJsonFile" type="file" accept=".json" />
-  </div>
-
-  <section id="helpPanel" class="help-panel" hidden>
-    <div class="lang-switch">
-      <button type="button" id="btnPL">PL</button>
-      <button type="button" id="btnEN">EN</button>
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; connect-src 'self' https: http:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta
+      name="description"
+      content="Lokalna biblioteka dokumentacji PLC — projekty, PDF i SCL."
+    />
+    <title>PLC Viewer — dokumentacja PLC</title>
+    <link rel="icon" href="./src/favicon.png" />
+  </head>
+  <body>
+    <div id="app">
+      <p style="padding: 2rem; font-family: system-ui">
+        PLC Viewer · Wczytywanie…
+      </p>
     </div>
-
-    <!-- Wersja PL -->
-    <div class="lang lang-pl">
-      <h3>Jak korzystać z listy projektów</h3>
-      <ol>
-        <li><strong>➕ Dodaj projekt (.json)</strong> – wczytuje pojedynczy plik JSON projektu.</li>
-        <li><strong>🧱 Otwórz pusty szablon</strong> – uruchamia viewer z domyślnym projektem.</li>
-        <li><strong>📂 Import projects.json</strong> – wczytuje całą listę projektów.</li>
-        <li><strong>💾 Export projects.json</strong> – zapisuje bieżącą listę do pliku.</li>
-        <li>Na karcie projektu kliknij <em>Open</em>, aby odczytać lub edytować w viewerze. Zmiany są zapisywane lokalnie.</li>
-        <li>Menu <strong>•••</strong> pozwala zmienić nazwę/opis, podmienić plik, duplikować, eksportować lub usuwać.</li>
-        <li>Wyszukiwarka filtruje po nazwie, opisie i dacie.</li>
-      </ol>
-    </div>
-
-    <!-- Wersja EN -->
-    <div class="lang lang-en">
-      <h3>How to use the project list</h3>
-      <ol>
-        <li><strong>➕ Add project (.json)</strong> – loads a single JSON project file.</li>
-        <li><strong>🧱 Open empty template</strong> – launches the viewer with the default project.</li>
-        <li><strong>📂 Import projects.json</strong> – loads the entire list of projects.</li>
-        <li><strong>💾 Export projects.json</strong> – saves the current list to a file.</li>
-        <li>On the project card, click <em>Open</em> to read or edit in the viewer. Changes are saved locally.</li>
-        <li>Menu <strong>•••</strong> allows you to change the name/description, replace the file, duplicate, export, or delete.</li>
-        <li>The search engine filters by name, description, and date.</li>
-      </ol>
-    </div>
-  </section>
-
-  <div class="search">
-    <input id="q" placeholder="Search by name/description/date..." />
-  </div>
-
-  <div id="grid" class="grid"></div>
-  <div id="empty" class="empty" style="display:none">
-    No projects. Add new or import file <code>projects.json</code>.
-  </div>
-</div><!-- /wrap -->
-
-<div id="idxOverlay" style="display:none">
-  <div id="idxDialog">
-    <h3 id="idxTitle">Enter value</h3>
-    <div id="idxErr" class="error-message"></div>
-    <div class="form-group">
-      <label id="idxLabel" for="idxInput">Value:</label>
-      <input id="idxInput" type="text" />
-    </div>
-    <div class="idx-actions">
-      <button class="ok" id="idxOk">OK</button>
-      <button class="cancel" id="idxCancel">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<div id="idxConfirmOverlay" style="display:none">
-  <div id="idxConfirm">
-    <h3 id="idxConfirmTitle">Confirm</h3>
-    <div id="idxMsg">Are you sure?</div>
-    <div class="idx-actions">
-      <button class="ok" id="idxYes">OK</button>
-      <button class="cancel" id="idxNo">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<footer><a href="https://github.com/tentypcic" target="_blank">Created by tentypcic © 2025</a></footer>
-
-<script src="src/index-app.js"></script>
-</body>
+    <script type="module" src="/app/main.ts"></script>
+  </body>
 </html>
+
