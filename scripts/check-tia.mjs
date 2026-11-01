@@ -21,9 +21,14 @@ try {
   });
   await page.goto(server.resolvedUrls.local[0]);
   const result = await page.evaluate(async (files) => {
-    const { importTia, tiaView, parseTia, resolveTiaCall } = await import(
-      "/app/tia.ts"
-    );
+    const {
+      importTia,
+      tiaView,
+      parseTia,
+      resolveTiaCall,
+      tiaReferences,
+      matchingReferences,
+    } = await import("/app/tia.ts");
     const p = importTia(files, "Reference");
     if (
       !resolveTiaCall(p, "DemoControl", "FC") ||
@@ -46,6 +51,26 @@ try {
     });
     if (resolveTiaCall(duplicated, "DemoControl", "FC"))
       throw Error("Ambiguous target must not resolve");
+    const refs = tiaReferences(p).references;
+    if (
+      matchingReferences(refs, "DemoControl").filter((r) => r.usage === "CALL")
+        .length !== 1
+    )
+      throw Error("Call references");
+    if (
+      matchingReferences(refs, "DemoData").filter(
+        (r) => r.symbol === "DemoData.Request" && r.usage === "R",
+      ).length !== 1
+    )
+      throw Error("DB member references");
+    const fcNode = p.nodes.find((n) => n.name === "DemoControl [FC7]");
+    if (matchingReferences(refs, "#MotorOn", fcNode.id)[0]?.usage !== "W")
+      throw Error("Coil writes");
+    if (
+      matchingReferences(refs, "#MotorOn", "wrong-node").length ||
+      matchingReferences(refs, "Demo").length
+    )
+      throw Error("Reference scope");
     document.body.replaceChildren();
     for (const text of Object.values(files))
       document.body.append(tiaView(text));
@@ -144,6 +169,35 @@ try {
       .count(),
     1,
   );
+  await page
+    .getByRole("button", { name: "Cross-reference", exact: true })
+    .click();
+  assert.equal(await page.locator(".xref-result").count(), 1);
+  await page.locator(".xref-result").click();
+  await page
+    .locator(".node-title-line h2")
+    .filter({ hasText: "SampleCycle [OB1]" })
+    .waitFor();
+  await page.locator(".xref-target").waitFor();
+  await page
+    .getByRole("button", { name: "Cross-reference", exact: true })
+    .click();
+  await page.getByLabel("Blok lub zmienna", { exact: true }).fill("DemoData");
+  assert.equal(await page.locator(".xref-result").count(), 1);
+  await page.locator(".xref-result").click();
+  await page.getByRole("tab", { name: "DemoControl.xml", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Zwiń wszystkie sieci", exact: true })
+    .click();
+  assert.equal(await page.locator(".tia-view [data-network][open]").count(), 0);
+  assert.equal(
+    await page.locator(".tia-view details").first().getAttribute("open"),
+    "",
+  );
+  await page
+    .getByRole("button", { name: "Rozwiń wszystkie sieci", exact: true })
+    .click();
+  assert.equal(await page.locator(".tia-view [data-network][open]").count(), 2);
   assert.equal(await page.locator(".doc-chip").count(), 0);
   const program = page
     .getByRole("treeitem")

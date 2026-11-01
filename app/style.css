@@ -1682,3 +1682,31 @@ form > .dialog-actions {
 :root[data-theme="dark"] .tree-row .node-icon:not(.folder) {
   filter: brightness(1.18);
 }
+.xref-results {
+  max-height: 55vh;
+  overflow: auto;
+  margin-top: 12px;
+}
+.xref-result {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  background: var(--surface);
+  color: var(--text);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.xref-result:hover {
+  background: var(--accentsoft);
+}
+.tia-view .xref-target {
+  border: 2px solid var(--accent);
+}
+.tia-network-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}

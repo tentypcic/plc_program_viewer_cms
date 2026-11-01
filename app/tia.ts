@@ -208,9 +208,30 @@ export function tiaView(
     );
     wrap.append(details);
   }
-  all(root, "SW.Blocks.CompileUnit").forEach((unit, index) => {
+  const units = all(root, "SW.Blocks.CompileUnit");
+  if (units.length) {
+    const tools = html("div");
+    tools.className = "tia-network-tools";
+    for (const [open, label] of [
+      [true, ui("Expand all networks", "Rozwiń wszystkie sieci")],
+      [false, ui("Collapse all networks", "Zwiń wszystkie sieci")],
+    ] as const) {
+      const button = html("button", label);
+      button.className = "button small";
+      button.onclick = () => {
+        for (const network of wrap.querySelectorAll<HTMLDetailsElement>(
+          "[data-network]",
+        ))
+          network.open = open;
+      };
+      tools.append(button);
+    }
+    wrap.append(tools);
+  }
+  units.forEach((unit, index) => {
     const details = html("details");
     details.open = true;
+    details.dataset.network = String(index + 1);
     const title = all(unit, "MultilingualText").find(
       (e) => e.getAttribute("CompositionName") === "Title",
     );
@@ -545,4 +566,107 @@ function drawNetwork(net: Element, callLink?: CallLink) {
   scroll.className = "tia-network";
   scroll.append(svg);
   return scroll;
+}
+
+export type TiaReference = {
+  symbol: string;
+  docId: string;
+  nodeId: string;
+  block: string;
+  network: number;
+  usage: string;
+};
+export function tiaReferences(project: Project) {
+  const references: TiaReference[] = [];
+  let skipped = 0;
+  for (const doc of project.documents) {
+    if (!/\.xml$/i.test(doc.name) || !doc.text) continue;
+    try {
+      const { root, name } = parseTia(doc.text);
+      const units = all(root, "SW.Blocks.CompileUnit");
+      units.forEach((unit, index) => {
+        const add = (symbol: string, usage: string) => {
+          if (symbol)
+            references.push({
+              symbol,
+              usage,
+              docId: doc.id,
+              nodeId: doc.nodeId,
+              block: name,
+              network: index + 1,
+            });
+        };
+        for (const call of all(unit, "CallInfo"))
+          add(call.getAttribute("Name") || "", "CALL");
+        for (const instance of all(unit, "Instance"))
+          add(symbol(instance), "INSTANCE");
+        const net = all(unit, "FlgNet")[0];
+        if (!net) return;
+        for (const access of Array.from(
+          all(net, "Parts")[0]?.children || [],
+        ).filter(
+          (e) =>
+            e.localName === "Access" &&
+            ["LocalVariable", "GlobalVariable"].includes(
+              e.getAttribute("Scope") || "",
+            ),
+        )) {
+          const usages = new Set<string>();
+          for (const wire of all(net, "Wire").filter((w) =>
+            all(w, "IdentCon").some(
+              (c) => c.getAttribute("UId") === access.getAttribute("UId"),
+            ),
+          )) {
+            for (const con of all(wire, "NameCon")) {
+              const part = Array.from(all(net, "Parts")[0].children).find(
+                (e) => e.getAttribute("UId") === con.getAttribute("UId"),
+              );
+              const pin = con.getAttribute("Name") || "";
+              const param =
+                part &&
+                all(part, "Parameter").find(
+                  (e) => e.getAttribute("Name") === pin,
+                );
+              const section = param?.getAttribute("Section");
+              const kind = part?.getAttribute("Name");
+              usages.add(
+                section === "InOut" || (kind === "Sr" && pin === "operand")
+                  ? "R/W"
+                  : section === "Output" ||
+                      /^(out\d*|q|et|eno)$/i.test(pin) ||
+                      (kind === "Coil" && pin === "operand")
+                    ? "W"
+                    : section === "Input" ||
+                        ["Contact", "PContact", "Add", "TON"].includes(
+                          kind || "",
+                        )
+                      ? "R"
+                      : "?",
+              );
+            }
+          }
+          add(symbol(access), [...usages].join(", ") || "?");
+        }
+      });
+    } catch {
+      skipped++;
+    }
+  }
+  return { references, skipped };
+}
+export function matchingReferences(
+  refs: TiaReference[],
+  query: string,
+  localNode?: string,
+) {
+  const q = query.trim().replace(/"/g, "").toLocaleLowerCase();
+  if (!q) return [];
+  return refs.filter(
+    (r) =>
+      (!q.startsWith("#") || r.nodeId === localNode) &&
+      (() => {
+        const s = r.symbol.replace(/"/g, "").toLocaleLowerCase();
+        return s === q || s.startsWith(q + ".") || s.startsWith(q + "[");
+      })(),
+  );
 }

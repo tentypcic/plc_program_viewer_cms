@@ -1,5 +1,11 @@
 import "./style.css";
-import { tiaView, resolveTiaCall } from "./tia";
+import {
+  tiaView,
+  resolveTiaCall,
+  tiaReferences,
+  matchingReferences,
+  parseTia,
+} from "./tia";
 import {
   el,
   button,
@@ -1357,6 +1363,107 @@ function openDoc(id: string) {
   }
   render();
 }
+function crossReference(node: PlcNode) {
+  const p = current!;
+  const index = tiaReferences(p);
+  const doc = p.documents.find(
+    (d) => d.nodeId === node.id && /\.xml$/i.test(d.name) && d.text,
+  );
+  let initial = node.name.replace(/\s*\[[^\]]+\]$/, "");
+  if (doc?.text) {
+    try {
+      initial = parseTia(doc.text).name;
+    } catch {}
+  }
+  const body = el("div", "dialog-body");
+  const search = field(
+    lang === "pl" ? "Blok lub zmienna" : "Block or variable",
+    "search",
+    initial,
+  );
+  search.input.placeholder = "FC_Program / Data_block.Start / #Start";
+  const results = el("div", "xref-results");
+  const hint = el(
+    "p",
+    "muted",
+    lang === "pl"
+      ? "Odwołania w zaimportowanych sieciach XML. R: odczyt, W: zapis, ?: nierozpoznane. Zmienne #lokalne są wyszukiwane w bieżącym bloku. Podaj pełną nazwę; nazwa DB obejmuje też jego pola."
+      : "References in imported XML networks. R: read, W: write, ?: unknown. #Locals are scoped to this block. Enter a full name; DB names include their members.",
+  );
+  body.append(search.wrap, hint, results);
+  const actions = el("div", "dialog-actions");
+  const dialog = modal("Cross-reference", body, actions);
+  actions.append(button(t("close"), () => dialog.close()));
+  const show = () => {
+    results.replaceChildren();
+    const matches = matchingReferences(
+      index.references,
+      search.input.value,
+      node.id,
+    );
+    results.append(
+      el(
+        "p",
+        "muted",
+        `${matches.length} ${lang === "pl" ? "odwołań" : "references"} · XML`,
+      ),
+    );
+    for (const r of matches.slice(0, 500)) {
+      results.append(
+        button(
+          `${r.symbol} · ${r.usage} · ${r.block} · ${lang === "pl" ? "Sieć" : "Network"} ${r.network}`,
+          () => {
+            dialog.close();
+            openDoc(r.docId);
+            requestAnimationFrame(() => {
+              const target = document.querySelector<HTMLDetailsElement>(
+                `.tia-view [data-network="${r.network}"]`,
+              );
+              if (target) {
+                target.open = true;
+                target.classList.add("xref-target");
+                target.scrollIntoView({ block: "center" });
+              }
+            });
+          },
+          "xref-result",
+        ),
+      );
+    }
+    if (!matches.length)
+      results.append(
+        el(
+          "p",
+          "muted",
+          lang === "pl"
+            ? "Brak odwołań w dostępnych sieciach XML."
+            : "No references in available XML networks.",
+        ),
+      );
+    if (matches.length > 500)
+      results.append(
+        el(
+          "p",
+          "muted",
+          lang === "pl"
+            ? "Wyświetlono pierwsze 500 wyników."
+            : "Showing first 500 results.",
+        ),
+      );
+    if (index.skipped)
+      results.append(
+        el(
+          "p",
+          "muted",
+          `${lang === "pl" ? "Pominięte pliki XML" : "Skipped XML files"}: ${index.skipped}`,
+        ),
+      );
+  };
+  search.input.oninput = show;
+  show();
+  search.input.select();
+  search.input.focus();
+}
 function renderNodeHeader(host: HTMLElement, n: PlcNode) {
   const header = el("div", "node-header");
   const line = el("div", "node-title-line");
@@ -1368,6 +1475,10 @@ function renderNodeHeader(host: HTMLElement, n: PlcNode) {
       ? [button(t("edit"), () => nodeForm(n.kind, n), "button small")]
       : []),
   );
+  if (n.kind === "block")
+    line.append(
+      button("Cross-reference", () => crossReference(n), "button small"),
+    );
   header.append(line);
   if (n.description) header.append(el("p", "muted", n.description));
   const docs = el("div", "doc-list");

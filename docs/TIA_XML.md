@@ -32,3 +32,11 @@ npm run test:tia
 ```
 
 The reference browser script checks rendering and the real workspace, folder toggling without closing a document, reload, dark theme and mobile page overflow. It writes temporary light/dark screenshots to `/tmp` for local visual inspection.
+
+## Cross-reference and network controls
+
+Use **Cross-reference** in a block header to find calls, instance references and symbolic operands in imported XML networks. Enter an exact block/symbol name; a DB name also includes member/array references. `#` locals are scoped to the block from which the dialog was opened. Results show the source block, network and access classification: R, W, R/W or `?` when the instruction/pin is not recognized. Click a result to open and highlight its network.
+
+This index covers imported XML networks only, not PDF, SCL text, hardware references or indirect/runtime accesses. No results means no matches in that available subset, not proof that a variable is unused. Results are limited to 500 displayed entries; invalid XML files are counted as skipped.
+
+**Expand all networks** and **Collapse all networks** affect only the current block's network panels. Interface tables and original XML panels retain their state.
