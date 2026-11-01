@@ -1814,3 +1814,18 @@ form > .dialog-actions {
 :root[data-theme="dark"] {
   --tia-safety-title: #77671c;
 }
+.tia-network text.tia-constant-value {
+  fill: #168dcb;
+  font-size: 10px;
+}
+.tia-network text.tia-default-pin {
+  fill: var(--muted);
+}
+.tia-network-tools select {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}

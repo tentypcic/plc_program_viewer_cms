@@ -114,11 +114,25 @@ export function importTia(files: Record<string, string>, name: string) {
   validateProject(p);
   return p;
 }
+function typeDefault(dt: string): string | undefined {
+  return /^bool$/i.test(dt)
+    ? "false"
+    : /^(w?string)(\[\d+\])?$/i.test(dt)
+      ? "''"
+      : /^(s?int|dint|lint|usint|uint|udint|ulint|real|lreal|byte|word|dword|lword)$/i.test(
+            dt,
+          )
+        ? "0"
+        : undefined;
+}
 function symbol(e: Element): string {
   const constant = child(e, "Constant")
     ? all(child(e, "Constant")!, "ConstantValue")[0]
     : undefined;
   if (constant) return constant.textContent || "";
+  const named = child(e, "Constant")?.getAttribute("Name");
+  if (named)
+    return (e.getAttribute("Scope") === "LocalConstant" ? "#" : "") + named;
   return (
     (e.getAttribute("Scope") === "LocalVariable" ? "#" : "") +
     all(e, "Component")
@@ -165,10 +179,13 @@ const symbolCache = new WeakMap<Project, TiaSymbolIndex>();
 export type TiaSymbolIndex = {
   block: (name: string, type: string) => string | undefined;
   operand: (name: string) => string | undefined;
+  defaultInput: (name: string, type: string, pin: string) => string | undefined;
 };
 export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
   const cached = symbolCache.get(project);
   if (cached) return cached;
+  const inputDefaults = new Map<string, Set<string>>();
+  const owners = new Map<string, Set<string>>();
   const blocks = new Map<string, Set<string>>(),
     tags = new Map<string, Set<string>>();
   const put = (map: Map<string, Set<string>>, key: string, address: string) => {
@@ -180,8 +197,26 @@ export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
     if (!/\.xml$/i.test(d.name) || !d.text) continue;
     try {
       const p = parseTia(d.text);
+      const key = p.type + ":" + p.name;
+      const found = owners.get(key) || new Set<string>();
+      found.add(d.nodeId);
+      owners.set(key, found);
       if (p.number && /^[0-9]+$/.test(p.number))
         put(blocks, p.type + ":" + p.name, "%" + p.type + p.number);
+      for (const section of all(p.attr, "Section").filter(
+        (e) => e.getAttribute("Name") === "Input" && !e.closest("Member"),
+      ))
+        for (const member of Array.from(section.children).filter(
+          (e) => e.localName === "Member",
+        )) {
+          const start = child(member, "StartValue");
+          if (start)
+            put(
+              inputDefaults,
+              p.type + ":" + p.name + ":" + member.getAttribute("Name"),
+              start.textContent || "",
+            );
+        }
       for (const tag of all(p.root, "SW.Tags.PlcTag")) {
         const a = child(tag, "AttributeList");
         if (a && value(a, "LogicalAddress"))
@@ -194,6 +229,10 @@ export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
     return set?.size === 1 ? [...set][0] : undefined;
   };
   const index = {
+    defaultInput: (name: string, type: string, pin: string) =>
+      owners.get(type + ":" + name)?.size === 1
+        ? unique(inputDefaults, type + ":" + name + ":" + pin)
+        : undefined,
     block: (name: string, type: string) => unique(blocks, type + ":" + name),
     operand: (name: string) =>
       name.startsWith("#") ? undefined : unique(tags, name),
@@ -222,6 +261,21 @@ export function tiaView(
       ),
     ),
   );
+  const constants = new Map<string, string>();
+  for (const section of all(attr, "Section").filter(
+    (e) => e.getAttribute("Name") === "Constant",
+  ))
+    for (const m of Array.from(section.children).filter(
+      (e) => e.localName === "Member",
+    )) {
+      const v = child(m, "StartValue");
+      const fallback = typeDefault(m.getAttribute("Datatype") || "");
+      if (v || fallback !== undefined)
+        constants.set(
+          "#" + m.getAttribute("Name"),
+          v?.textContent || fallback || "",
+        );
+    }
   const data = tiaDataTable(root, attr, type, name, lang);
   if (["FC", "FB", "OB"].includes(type)) {
     const details = html("details");
@@ -260,6 +314,40 @@ export function tiaView(
       };
       tools.append(button);
     }
+    const zoom = html("select");
+    zoom.setAttribute("aria-label", ui("Diagram scale", "Skala schematu"));
+    const fitOption = html("option", ui("Fit width", "Dopasuj szerokość"));
+    fitOption.value = "fit";
+    zoom.append(fitOption);
+    for (const percent of [50, 75, 100, 125, 150]) {
+      const option = html("option", percent + "%");
+      option.value = String(percent);
+      option.selected = percent === 100;
+      zoom.append(option);
+    }
+    const applyScale = () => {
+      for (const svg of wrap.querySelectorAll<SVGSVGElement>(
+        ".tia-network svg",
+      )) {
+        const fit = zoom.value === "fit";
+        svg.style.maxWidth = fit ? "100%" : "none";
+        svg.style.minWidth = "0";
+        svg.style.width =
+          Number(svg.getAttribute("width")) *
+            (fit ? 1 : Number(zoom.value) / 100) +
+          "px";
+        svg.style.height = "auto";
+      }
+    };
+    zoom.onchange = applyScale;
+    const fitButton = html("button", ui("Fit width", "Dopasuj szerokość"));
+    fitButton.className = "button small";
+    fitButton.onclick = () => {
+      zoom.value = "fit";
+      applyScale();
+    };
+    tools.append(fitButton);
+    tools.append(zoom);
     wrap.append(tools);
   }
   units.forEach((unit, index) => {
@@ -294,17 +382,18 @@ export function tiaView(
       const branched = all(net, "Wire").some(
         (w) => all(w, "NameCon").length > 2,
       );
-      if (special.length || branched)
-        details.append(
-          html(
-            "p",
-            ui(
-              "Approximate diagram: branching or generic instructions. Verify against the TIA PDF / original XML.",
-              "Schemat przybliżony: rozgałęzienia lub instrukcje ogólne. Porównaj z PDF z TIA / źródłowym XML.",
-            ),
-          ),
+      if (special.length || branched) {
+        const badge = html("span", " · ≈");
+        badge.className = "tia-approximation";
+        badge.title = ui(
+          "Approximate layout: verify branching and generic instructions against TIA.",
+          "Układ przybliżony: porównaj rozgałęzienia i instrukcje ogólne z TIA.",
         );
-      details.append(drawNetwork(net, callLink, symbols, safety));
+        badge.setAttribute("aria-label", badge.title);
+        badge.tabIndex = 0;
+        details.querySelector("summary")!.append(badge);
+      }
+      details.append(drawNetwork(net, callLink, symbols, safety, constants));
     } else if (all(unit, "StructuredText")[0]) {
       const pre = html("pre");
       pre.className = "code-view tia-scl";
@@ -350,6 +439,7 @@ function drawNetwork(
   callLink?: CallLink,
   symbols?: TiaSymbolIndex,
   safety = false,
+  constants = new Map<string, string>(),
 ) {
   const parts = Array.from(all(net, "Parts")[0]?.children || []).filter((e) =>
     ["Part", "Call"].includes(e.localName),
@@ -365,7 +455,9 @@ function drawNetwork(
     ? 44
     : [...accesses.values()].some((s) => symbols?.operand(s))
       ? 32
-      : 24;
+      : [...accesses.values()].some((s) => constants.has(s))
+        ? 32
+        : 24;
   const wires = all(net, "Wire");
   const defaults: Record<string, string[]> = {
     Contact: ["in", "out"],
@@ -442,12 +534,8 @@ function drawNetwork(
       Math.min(38, title.length) * 8 + 20,
     );
   };
-  const step = Math.max(
-    roomy ? 940 : 320,
-    Math.max(150, ...parts.map((p) => boxWidth(id(p)))) + (roomy ? 600 : 170),
-  );
   const pitch = Math.max(
-    110,
+    parts.some((p) => kind(p) === "Sr") ? 44 + 4 * rowGap + 30 : 110,
     ...[...pins.values()].map(
       (list) =>
         44 +
@@ -475,7 +563,27 @@ function drawNetwork(
           );
     }
   const columns = Math.max(0, ...levels.values()) + 1;
-  const width = Math.max(1000, columns * step + (roomy ? 400 : 180));
+  const columnX: number[] = [roomy ? 230 : 180];
+  for (let level = 0; level < columns; level++) {
+    const group = parts.filter((p) => levels.get(id(p)) === level);
+    const simpleOnly = group.every((p) =>
+      [
+        "Contact",
+        "PContact",
+        "NContact",
+        "Coil",
+        "SCoil",
+        "RCoil",
+        "O",
+      ].includes(kind(p)),
+    );
+    columnX[level + 1] =
+      columnX[level] +
+      (simpleOnly
+        ? 270
+        : Math.max(...group.map((p) => boxWidth(id(p))), 150) + 380);
+  }
+  const width = Math.max(900, columnX[columns] + 220);
   const positions = new Map<string, { x: number; y: number }>();
   const rows = new Map<number, number>();
   for (const p of parts) {
@@ -484,17 +592,14 @@ function drawNetwork(
     rows.set(level, row + 1);
     positions.set(id(p), {
       x:
-        (level === 0 &&
+        level === 0 &&
         all(p, "CallInfo").length &&
         pins
           .get(id(p))!
           .filter((pin) => !pin.out)
           .every((pin) => pin.name.toLowerCase() === "en")
           ? 48
-          : roomy
-            ? 340
-            : 200) +
-        level * step,
+          : columnX[level],
       y: 60 + row * pitch,
     });
   }
@@ -503,9 +608,12 @@ function drawNetwork(
     const pin = list.find((p) => p.name === name);
     if (!pin) return 0;
     const side = list.filter((p) => p.out === pin.out);
-    return kind(parts.find((p) => id(p) === uid)!) === "Add" && name === "out"
+    const k = kind(parts.find((p) => id(p) === uid)!);
+    return k === "Add" && name === "out"
       ? 1
-      : side.indexOf(pin);
+      : k === "Sr" && name.toLowerCase() === "r1"
+        ? 3
+        : side.indexOf(pin);
   };
   // Align inline contacts to the actual destination pin, not to an arbitrary row.
   for (let pass = 0; pass < parts.length; pass++)
@@ -552,10 +660,10 @@ function drawNetwork(
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("width", String(width));
-  if (roomy) {
-    svg.style.width = width + "px";
-    svg.style.height = height + "px";
-  }
+  svg.style.width = width + "px";
+  svg.style.maxWidth = "none";
+  svg.style.height = "auto";
+  svg.style.minWidth = "0";
   svg.setAttribute("height", String(height));
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "LAD network connections");
@@ -592,7 +700,7 @@ function drawNetwork(
           : value;
     const e = add(
       "text",
-      { x, y, "text-anchor": anchor, "font-size": 12, class: cls },
+      { x, y, "text-anchor": anchor, "font-size": 11, class: cls },
       cls === "tia-operand" ? "" : label,
     );
     if (cls === "tia-operand") {
@@ -631,10 +739,7 @@ function drawNetwork(
     const pos = positions.get(uid);
     const pin = pins.get(uid)?.find((p) => p.name === name);
     if (!pos || !pin) return null;
-    const side = pins.get(uid)!.filter((p) => p.out === pin.out);
-    let row = side.indexOf(pin);
-    if (kind(parts.find((p) => id(p) === uid)!) === "Add" && name === "out")
-      row = 1;
+    const row = pinRow(uid, name);
     return {
       x: pos.x + (pin.out ? boxWidth(uid) : 0),
       y: pos.y + 44 + row * rowGap,
@@ -693,6 +798,15 @@ function drawNetwork(
         }
         const p = point(id(c), name);
         if (!p) continue;
+        const constantValue = constants.get(accesses.get(id(access)) || "");
+        if (constantValue !== undefined)
+          text(
+            p.x + (p.out ? 22 : -22),
+            p.y - 12,
+            constantValue,
+            p.out ? "start" : "end",
+            "tia-constant-value",
+          );
         line(p.x, p.y, p.x + (p.out ? 18 : -18), p.y);
         text(
           p.x + (p.out ? 22 : -22),
@@ -713,8 +827,32 @@ function drawNetwork(
       }
     // Open connectors have no assigned value; do not invent a live value.
     if (all(w, "OpenCon").length)
-      for (const p of points)
-        text(p.x + (p.out ? 22 : -22), p.y + 4, "○", p.out ? "start" : "end");
+      for (const c of con) {
+        const p = point(id(c), c.getAttribute("Name")!);
+        if (!p) continue;
+        const part = parts.find((part) => id(part) === id(c));
+        const call = part && all(part, "CallInfo")[0];
+        const def =
+          call && !p.out
+            ? symbols?.defaultInput(
+                call.getAttribute("Name") || "",
+                call.getAttribute("BlockType") || "",
+                c.getAttribute("Name")!,
+              )
+            : undefined;
+        const label = text(
+          p.x + (p.out ? 22 : -22),
+          p.y + 4,
+          def === undefined ? "○" : def,
+          p.out ? "start" : "end",
+          def === undefined ? "" : "tia-default-pin",
+        );
+        if (def !== undefined) {
+          const t = document.createElementNS(svg.namespaceURI, "title");
+          t.textContent = "Default from target interface; pin is not assigned";
+          label.append(t);
+        }
+      }
   }
   for (const p of parts) {
     const pos = positions.get(id(p))!;
@@ -769,8 +907,8 @@ function drawNetwork(
           text(pos.x + 75, y + 4, k === "SCoil" ? "S" : "R", "middle");
         line(pos.x + 150, y, width - 30, y);
       } else {
-        line(pos.x + 65, y - 10, pos.x + 65, y + 10);
-        line(pos.x + 85, y - 10, pos.x + 85, y + 10);
+        line(pos.x + 65, y - 8, pos.x + 65, y + 8);
+        line(pos.x + 85, y - 8, pos.x + 85, y + 8);
         if (k === "PContact" || k === "NContact")
           text(pos.x + 75, y + 4, k === "PContact" ? "P" : "N", "middle");
         if (all(p, "Negated").some((e) => e.getAttribute("Name") === "operand"))
@@ -785,12 +923,7 @@ function drawNetwork(
     const list = pins.get(id(p))!;
     const h = Math.max(
       76,
-      44 +
-        Math.max(
-          list.filter((p) => p.out).length,
-          list.filter((p) => !p.out).length,
-        ) *
-          rowGap,
+      44 + Math.max(...list.map((pin) => pinRow(id(p), pin.name) + 1)) * rowGap,
     );
     add("rect", {
       x: pos.x,

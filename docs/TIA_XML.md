@@ -62,3 +62,9 @@ Calls show `%FCn`/`%FBn` from uniquely resolved XML block metadata. Global FB in
 Network headers use compact gray strips and the network body uses the current theme's paper surface. Operand names wrap across lines with the full name retained in a tooltip. Contact chains with a unique downstream pin align to that pin when it does not collide with an existing instruction.
 
 MOVE instructions have EN/ENO and IN/OUT1 pins. FlgNet `O` parts are shown as wire junctions; multi-connector wires use shared buses with connection dots. These are improvements for the tested reset and MOVE fanout shapes, not a guarantee of identical TIA routing for all graphs. Complex networks retain the approximation notice. F-language block headers use a yellow safety color from XML metadata only; it is not online status or a safety verification.
+
+## Constants, open inputs and scale
+
+LocalConstant accesses retain their symbolic name and show an explicitly exported value or a supported elementary type default (for example Int zero). If the declaration cannot be resolved, the name remains visible without a fabricated value. Open call inputs show only an explicitly exported default from a uniquely resolved target interface; the label is muted and its tooltip says that the pin is unassigned. This is not an online value.
+
+The default 100% scale uses the same base font/symbol geometry across networks, with horizontal scrolling for wide networks. Diagram scale applies 50/75/100/125/150% to all networks in the current block; Fit width is a separate option. Compact column spacing and extra separation for SR reset paths reduce excessive whitespace and label collisions. Approximation information is available via the ≈ marker on relevant network headers.

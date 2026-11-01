@@ -111,6 +111,20 @@ try {
     );
     if (!safetyView.querySelector('rect[fill*="tia-safety-title"]'))
       throw Error("F block styling");
+    const localConstant = netXml(
+      '<Access Scope="LocalConstant" UId="8"><Constant Name="MODE_ZERO"/></Access><Part Name="Move" UId="2"/>',
+      wire("<Powerrail/>" + pin(2, "en")) +
+        wire('<IdentCon UId="8"/>' + pin(2, "in")),
+    ).replace(
+      "</Sections>",
+      '<Section Name="Constant"><Member Name="MODE_ZERO" Datatype="Int"/></Section></Sections>',
+    );
+    const localView = tiaView(localConstant);
+    if (
+      localView.querySelector(".tia-constant-value")?.textContent !== "0" ||
+      !localView.textContent.includes("#MODE_ZERO")
+    )
+      throw Error("Local constant type default");
     const fbXml = files["Program blocks/DemoControl.xml"]
       .replaceAll("SW.Blocks.FC", "SW.Blocks.FB")
       .replace(
@@ -167,6 +181,25 @@ try {
       matchingReferences(refs, "Demo").length
     )
       throw Error("Reference scope");
+    const withDefault = structuredClone(p);
+    const target = withDefault.documents.find(
+      (d) => d.name === "DemoControl.xml",
+    );
+    target.text = target.text.replace(
+      '<Member Name="RunRequest" Datatype="Bool"/>',
+      '<Member Name="RunRequest" Datatype="Bool"><StartValue>True</StartValue></Member>',
+    );
+    const defaultsIndex = tiaSymbolIndex(withDefault);
+    const defaultCall = files["Program blocks/SampleCycle.xml"].replace(
+      '<IdentCon UId="1"/>',
+      '<OpenCon UId="1"/>',
+    );
+    if (
+      !tiaView(defaultCall, "en", undefined, defaultsIndex)
+        .querySelector(".tia-default-pin")
+        ?.textContent.startsWith("True")
+    )
+      throw Error("Open pin default from declaration");
     const index = tiaSymbolIndex(p);
     if (
       index.block("DemoControl", "FC") !== "%FC7" ||
@@ -348,6 +381,27 @@ try {
     .getByRole("button", { name: "Rozwiń wszystkie sieci", exact: true })
     .click();
   assert.equal(await page.locator(".tia-view [data-network][open]").count(), 2);
+  await page.getByLabel("Skala schematu", { exact: true }).selectOption("75");
+  assert.equal(
+    await page
+      .locator(".tia-network svg")
+      .first()
+      .evaluate(
+        (e) => parseFloat(e.style.width) / Number(e.getAttribute("width")),
+      ),
+    0.75,
+  );
+  await page
+    .getByRole("button", { name: "Dopasuj szerokość", exact: true })
+    .click();
+  assert.equal(
+    await page
+      .locator(".tia-network svg")
+      .first()
+      .evaluate((e) => e.style.maxWidth),
+    "100%",
+  );
+  await page.getByLabel("Skala schematu", { exact: true }).selectOption("100");
   assert.equal(await page.locator(".doc-chip").count(), 0);
   const program = page
     .getByRole("treeitem")
