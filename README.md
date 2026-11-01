@@ -1,7 +1,7 @@
 # PLC Viewer
 
 <p align="center"><img src="docs/screenshots/overview.jpg" alt="PLC Viewer project library" width="900"></p>
-<p align="center">Local PLC documentation, built with <strong>TypeScript, Vite, IndexedDB and PDF.js</strong>.<br><a href="https://plc-viewer-cms.tentypcic.chatgpt.site">Open in Sites</a> · <a href="https://tentypcic.github.io/plc_program_viewer_cms/">GitHub Pages</a> · <a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a></p>
+<p align="center">Local PLC documentation, built with <strong>TypeScript, Vite, IndexedDB and PDF.js</strong>.<br><a href="https://tentypcic.github.io/plc_program_viewer_cms/">Open the app · GitHub Pages</a> · <a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a></p>
 
 ## 🧠 About The Project
 
@@ -59,7 +59,7 @@ The E2E suite targets the production build under `/plc_program_viewer_cms/`. Its
 - Up to 2,000 projects per import, 20,000 nodes/documents per project and 64 tree levels; legacy depth is 32.
 - Available browser storage varies. Remote PDFs may require CORS; ZIP retains their URL rather than downloading them silently.
 - No cloud sync, service worker or guaranteed offline reload. Export independent backups.
-- Sites starts owner-private; repository visibility and hosting access are separate.
+- Published on GitHub Pages. Application data stays in the current browser; export a ZIP backup before moving from another domain.
 
 ## 📂 Documentation
 
