@@ -28,7 +28,46 @@ try {
       resolveTiaCall,
       tiaReferences,
       matchingReferences,
+      structuredText,
+      parseSclHeader,
     } = await import("/app/tia.ts");
+    const sample = files["Program blocks/DemoData.xml"];
+    for (const rootType of [
+      "SW.Blocks.ArrayDB",
+      "SW.TechnologicalObjects.TechnologicalInstanceDB",
+    ]) {
+      const xml = sample.replaceAll("SW.Blocks.GlobalDB", rootType);
+      if (
+        parseTia(xml).type !== "DB" ||
+        !tiaView(xml).querySelector(".tia-data-grid")
+      )
+        throw Error("Special DB root");
+    }
+    const scl =
+      'FUNCTION_BLOCK "DemoSource"\nVAR_INPUT\nEnable : Bool;\nEND_VAR\nEND_FUNCTION_BLOCK';
+    if (parseSclHeader(scl).type !== "FB") throw Error("SCL declaration");
+    const mixed = importTia(
+      { ...files, "Program blocks/DemoSource.scl": scl },
+      "Mixed",
+    );
+    if (
+      mixed.documents.length !== 6 ||
+      !resolveTiaCall(mixed, "DemoSource", "FB")
+    )
+      throw Error("SCL source import and call link");
+    const st = new DOMParser().parseFromString(
+      '<StructuredText><Access Scope="LocalVariable"><Symbol><Component Name="scaled"/></Symbol></Access><Blank Num="1"/><Token Text=":="/><Blank Num="1"/><Access Scope="Call"><Instruction Name="WORD_TO_INT"><Token Text="("/><NamelessParameter><Access Scope="LiteralConstant"><Constant><ConstantValue>16#2FF</ConstantValue></Constant></Access></NamelessParameter><Token Text=")"/></Instruction></Access><Token Text=";"/><NewLine Num="1"/><LineComment><Text>sample</Text></LineComment></StructuredText>',
+      "application/xml",
+    ).documentElement;
+    if (structuredText(st) !== "#scaled := WORD_TO_INT(16#2FF);\n//sample")
+      throw Error("StructuredText token reconstruction");
+    const ladder = files["Program blocks/DemoControl.xml"]
+      .replace('Name="Coil"', 'Name="SCoil"')
+      .replace(
+        '<Part UId="3" Name="Contact"/>',
+        '<Part UId="3" Name="Contact"><Negated Name="operand"/></Part>',
+      );
+    if (!tiaView(ladder).textContent.includes("S")) throw Error("SET coil");
     const p = importTia(files, "Reference");
     if (
       !resolveTiaCall(p, "DemoControl", "FC") ||

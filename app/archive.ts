@@ -57,7 +57,7 @@ export async function readImport(
           entry.originalSize > 50 * 1024 * 1024 ||
           (total += entry.originalSize) > MAX_UNPACKED ||
           /(^\/|\\|(^|\/)\.\.(\/|$))/.test(entry.name) ||
-          !/^(.*\/|.*\.xml|manifest\.json|documents\/[a-f0-9-]{36})$/i.test(
+          !/^(.*\/|.*\.(xml|scl)|manifest\.json|documents\/[a-f0-9-]{36})$/i.test(
             entry.name,
           )
         )
@@ -69,12 +69,13 @@ export async function readImport(
       const xml: Record<string, string> = {};
       for (const [path, bytes] of Object.entries(files)) {
         if (path.endsWith("/")) continue;
-        if (!/\.xml$/i.test(path)) throw Error("Unexpected TIA ZIP entry");
+        if (!/\.(xml|scl)$/i.test(path))
+          throw Error("Unexpected TIA ZIP entry");
         xml[path] = await decodeText(
           new Blob([bytes as Uint8Array<ArrayBuffer>]),
         );
       }
-      if (!Object.keys(xml).length) throw Error("No TIA XML files");
+      if (!Object.keys(xml).length) throw Error("No TIA XML/SCL files");
       return {
         projects: [importTia(xml, file.name.replace(/\.zip$/i, ""))],
         assets: [],

@@ -1,3 +1,4 @@
+import { tokenize } from "./analysis/lexer";
 import {
   newProject,
   newNode,
@@ -17,7 +18,7 @@ export function parseTia(text: string) {
   const xml = new DOMParser().parseFromString(text, "application/xml");
   if (all(xml, "parsererror").length) throw Error("Invalid TIA XML");
   const root = Array.from(xml.documentElement.children).find((e) =>
-    /^(SW.Blocks.(OB|FC|FB|GlobalDB|InstanceDB)|SW.Types.PlcStruct|SW.Tags.PlcTagTable)$/.test(
+    /^(SW\.Blocks\.(OB|FC|FB|GlobalDB|InstanceDB|ArrayDB)|SW\.Types\.PlcStruct|SW\.Tags\.PlcTagTable|SW\.TechnologicalObjects\.TechnologicalInstanceDB)$/.test(
       e.localName,
     ),
   );
@@ -38,13 +39,38 @@ export function parseTia(text: string) {
     type,
     name: value(attr, "Name"),
     number: value(attr, "Number"),
+    safety: value(attr, "ProgrammingLanguage").startsWith("F_"),
+    technology: root.localName.startsWith("SW.TechnologicalObjects."),
+  };
+}
+export function parseSclHeader(text: string): {
+  name: string;
+  type: BlockType;
+} {
+  const declaration = text
+    .replace(/^\uFEFF/, "")
+    .trimStart()
+    .match(
+      /^(FUNCTION_BLOCK|FUNCTION|ORGANIZATION_BLOCK)\s+(?:"([^"]+)"|([A-Za-z_][A-Za-z_0-9]*))/i,
+    );
+  if (!declaration) throw Error("Unsupported SCL source declaration");
+  return {
+    name: declaration[2] || declaration[3],
+    type:
+      declaration[1].toUpperCase() === "FUNCTION_BLOCK"
+        ? "FB"
+        : declaration[1].toUpperCase() === "FUNCTION"
+          ? "FC"
+          : "OB",
   };
 }
 export function importTia(files: Record<string, string>, name: string) {
   const p = newProject(name);
   const folders = new Map(p.nodes.map((n) => [n.name, n.id]));
   for (const [path, text] of Object.entries(files)) {
-    const parsed = parseTia(text);
+    const parsed = /\.scl$/i.test(path)
+      ? { ...parseSclHeader(text), number: "", safety: false }
+      : parseTia(text);
     const pieces = path.split("/");
     pieces.pop();
     let parent: string | null = null,
@@ -74,12 +100,13 @@ export function importTia(files: Record<string, string>, name: string) {
       "block",
       parsed.type,
     );
+    n.safety = parsed.safety;
     p.nodes.push(n);
     p.documents.push({
       id: uuid(),
       nodeId: n.id,
       name: path.split("/").pop()!,
-      mime: "application/xml",
+      mime: /\.scl$/i.test(path) ? "text/plain" : "application/xml",
       size: new TextEncoder().encode(text).length,
       text,
     });
@@ -119,10 +146,12 @@ export function resolveTiaCall(project: Project, name: string, type: string) {
       .map((n) => n.id),
   );
   const matches = project.documents.filter((d) => {
-    if (!nodeIds.has(d.nodeId) || !/\.xml$/i.test(d.name) || !d.text)
+    if (!nodeIds.has(d.nodeId) || !/\.(xml|scl)$/i.test(d.name) || !d.text)
       return false;
     try {
-      const parsed = parseTia(d.text);
+      const parsed = /\.scl$/i.test(d.name)
+        ? parseSclHeader(d.text)
+        : parseTia(d.text);
       return parsed.name === name && parsed.type === type;
     } catch {
       return false;
@@ -139,7 +168,7 @@ export function tiaView(
   callLink?: CallLink,
 ) {
   const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
-  const { root, attr, name, type, number } = parseTia(text);
+  const { root, attr, name, type, number, technology } = parseTia(text);
   const wrap = html("div");
   wrap.className = "tia-view";
   wrap.append(html("h2", `${name} ${number ? `[${type}${number}]` : ""}`));
@@ -212,6 +241,16 @@ export function tiaView(
       wrap.append(details);
     }
   }
+  if (technology)
+    wrap.append(
+      html(
+        "p",
+        ui(
+          "Technology object: exported interface preview. Motion configuration is available in original XML.",
+          "Obiekt technologiczny: podgląd eksportowanego interfejsu. Konfiguracja Motion jest dostępna w źródłowym XML.",
+        ),
+      ),
+    );
   const units = all(root, "SW.Blocks.CompileUnit");
   if (units.length) {
     const tools = html("div");
@@ -242,12 +281,50 @@ export function tiaView(
     details.append(
       html(
         "summary",
-        `${ui("Network", "Sieć")} ${index + 1}: ${title ? all(title, "Text")[0]?.textContent || "" : ""}`,
+        `${ui("Network", "Sieć")} ${index + 1}: ${title ? all(title, "Text").find((e) => e.textContent?.trim())?.textContent || "" : ""}`,
       ),
     );
     const net = all(unit, "FlgNet")[0];
-    if (net) details.append(drawNetwork(net, callLink));
-    else {
+    if (net) {
+      const special = all(net, "Part").filter(
+        (p) =>
+          ![
+            "Contact",
+            "PContact",
+            "NContact",
+            "Coil",
+            "SCoil",
+            "RCoil",
+            "Sr",
+            "TON",
+            "Add",
+          ].includes(p.getAttribute("Name") || ""),
+      );
+      const branched = all(net, "Wire").some(
+        (w) => all(w, "NameCon").length > 2,
+      );
+      if (special.length || branched)
+        details.append(
+          html(
+            "p",
+            ui(
+              "Approximate diagram: branching or generic instructions. Verify against the TIA PDF / original XML.",
+              "Schemat przybliżony: rozgałęzienia lub instrukcje ogólne. Porównaj z PDF z TIA / źródłowym XML.",
+            ),
+          ),
+        );
+      details.append(drawNetwork(net, callLink));
+    } else if (all(unit, "StructuredText")[0]) {
+      const pre = html("pre");
+      pre.className = "code-view tia-scl";
+      const code = html("code");
+      for (const token of tokenize(
+        structuredText(all(unit, "StructuredText")[0]),
+      ))
+        code.append(htmlToken(token.kind, token.text));
+      pre.append(code);
+      details.append(pre);
+    } else {
       const source = all(unit, "NetworkSource")[0];
       if (source?.children.length)
         details.append(
@@ -292,6 +369,9 @@ function drawNetwork(net: Element, callLink?: CallLink) {
   const defaults: Record<string, string[]> = {
     Contact: ["in", "out"],
     PContact: ["pre", "out"],
+    NContact: ["pre", "out"],
+    SCoil: ["in"],
+    RCoil: ["in"],
     Coil: ["in"],
     Sr: ["s", "r1", "q"],
     TON: ["IN", "PT", "Q", "ET"],
@@ -328,6 +408,32 @@ function drawNetwork(net: Element, callLink?: CallLink) {
       ];
     }),
   );
+  const roomy =
+    parts.some((p) =>
+      all(p, "Parameter").some(
+        (e) => (e.getAttribute("Name") || "").length > 16,
+      ),
+    ) || [...accesses.values()].some((s) => s.length > 30);
+  const boxWidth = (uid: string) =>
+    roomy &&
+    !["Contact", "PContact", "NContact", "Coil", "SCoil", "RCoil"].includes(
+      kind(parts.find((p) => id(p) === uid)!),
+    )
+      ? 340
+      : 150;
+  const pitch = Math.max(
+    210,
+    ...[...pins.values()].map(
+      (list) =>
+        44 +
+        Math.max(
+          list.filter((p) => p.out).length,
+          list.filter((p) => !p.out).length,
+        ) *
+          24 +
+        80,
+    ),
+  );
   const levels = new Map(parts.map((p) => [id(p), 0]));
   for (let i = 0; i < parts.length; i++)
     for (const w of wires) {
@@ -344,22 +450,32 @@ function drawNetwork(net: Element, callLink?: CallLink) {
           );
     }
   const columns = Math.max(0, ...levels.values()) + 1;
-  const width = Math.max(1000, columns * 320 + 180);
+  const width = Math.max(
+    1000,
+    columns * (roomy ? 940 : 320) + (roomy ? 400 : 180),
+  );
   const positions = new Map<string, { x: number; y: number }>();
   const rows = new Map<number, number>();
   for (const p of parts) {
     const level = levels.get(id(p))!;
     const row = rows.get(level) || 0;
     rows.set(level, row + 1);
-    positions.set(id(p), { x: 200 + level * 320, y: 60 + row * 210 });
+    positions.set(id(p), {
+      x: (roomy ? 340 : 200) + level * (roomy ? 940 : 320),
+      y: 60 + row * pitch,
+    });
   }
   const height = Math.max(
     200,
-    ...[...positions.values()].map((p) => p.y + 150),
+    ...[...positions.values()].map((p) => p.y + pitch - 30),
   );
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("width", String(width));
+  if (roomy) {
+    svg.style.width = width + "px";
+    svg.style.height = height + "px";
+  }
   svg.setAttribute("height", String(height));
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "LAD network connections");
@@ -387,12 +503,21 @@ function drawNetwork(net: Element, callLink?: CallLink) {
     value: string,
     anchor = "start",
     cls = "",
-  ) =>
-    add(
+  ) => {
+    const label =
+      value.length > 38 ? value.slice(0, 17) + "…" + value.slice(-20) : value;
+    const e = add(
       "text",
       { x, y, "text-anchor": anchor, "font-size": 12, class: cls },
-      value,
+      label,
     );
+    if (label !== value) {
+      const title = document.createElementNS(svg.namespaceURI, "title");
+      title.textContent = value;
+      e.append(title);
+    }
+    return e;
+  };
   const point = (uid: string, name: string) => {
     const pos = positions.get(uid);
     const pin = pins.get(uid)?.find((p) => p.name === name);
@@ -402,7 +527,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
     if (kind(parts.find((p) => id(p) === uid)!) === "Add" && name === "out")
       row = 1;
     return {
-      x: pos.x + (pin.out ? 150 : 0),
+      x: pos.x + (pin.out ? boxWidth(uid) : 0),
       y: pos.y + 44 + row * 24,
       out: pin.out,
     };
@@ -454,23 +579,39 @@ function drawNetwork(net: Element, callLink?: CallLink) {
     const k = kind(p);
     const info = all(p, "CallInfo")[0];
     const name = info?.getAttribute("Name") || k;
-    const simple = ["Contact", "PContact", "Coil"].includes(k);
+    const simple = [
+      "Contact",
+      "PContact",
+      "NContact",
+      "Coil",
+      "SCoil",
+      "RCoil",
+    ].includes(k);
     if (simple) {
       const y = pos.y + 44;
       line(pos.x, y, pos.x + 65, y);
       line(pos.x + 85, y, pos.x + 150, y);
-      if (k === "Coil") {
+      if (["Coil", "SCoil", "RCoil"].includes(k)) {
         add("path", {
           d: `M${pos.x + 69} ${y - 10} Q${pos.x + 60} ${y} ${pos.x + 69} ${y + 10} M${pos.x + 81} ${y - 10} Q${pos.x + 90} ${y} ${pos.x + 81} ${y + 10}`,
           fill: "none",
           stroke: "currentColor",
           "stroke-width": 2,
         });
+        if (k !== "Coil")
+          text(pos.x + 75, y + 4, k === "SCoil" ? "S" : "R", "middle");
         line(pos.x + 150, y, width - 30, y);
       } else {
         line(pos.x + 65, y - 10, pos.x + 65, y + 10);
         line(pos.x + 85, y - 10, pos.x + 85, y + 10);
-        if (k === "PContact") text(pos.x + 75, y + 4, "P", "middle");
+        if (k === "PContact" || k === "NContact")
+          text(pos.x + 75, y + 4, k === "PContact" ? "P" : "N", "middle");
+        if (all(p, "Negated").some((e) => e.getAttribute("Name") === "operand"))
+          add("path", {
+            d: `M${pos.x + 65} ${y + 10} L${pos.x + 85} ${y - 10}`,
+            stroke: "currentColor",
+            "stroke-width": 1.5,
+          });
       }
       continue;
     }
@@ -487,19 +628,19 @@ function drawNetwork(net: Element, callLink?: CallLink) {
     add("rect", {
       x: pos.x,
       y: pos.y,
-      width: 150,
+      width: boxWidth(id(p)),
       height: h,
       fill: "var(--tia-box, #e1e5ed)",
     });
     add("rect", {
       x: pos.x,
       y: pos.y,
-      width: 150,
+      width: boxWidth(id(p)),
       height: 28,
       fill: "var(--tia-title, #cbd1df)",
     });
     text(
-      pos.x + 75,
+      pos.x + boxWidth(id(p)) / 2,
       pos.y + 19,
       name === "Sr" ? "SR" : name === "Add" ? "ADD" : name,
       "middle",
@@ -507,7 +648,13 @@ function drawNetwork(net: Element, callLink?: CallLink) {
     );
     const instance = all(p, "Instance")[0];
     if (instance)
-      text(pos.x + 75, pos.y - 10, symbol(instance), "middle", "tia-operand");
+      text(
+        pos.x + boxWidth(id(p)) / 2,
+        pos.y - 10,
+        symbol(instance),
+        "middle",
+        "tia-operand",
+      );
     for (const pin of list) {
       const pt = point(id(p), pin.name)!;
       text(
@@ -522,7 +669,7 @@ function drawNetwork(net: Element, callLink?: CallLink) {
       const hit = add("rect", {
         x: pos.x,
         y: pos.y,
-        width: 150,
+        width: boxWidth(id(p)),
         height: h,
         fill: "transparent",
         class: activate ? "tia-call-link" : "tia-call-unresolved",
@@ -885,4 +1032,60 @@ function tiaDataTable(
   }
   render();
   return host;
+}
+
+function htmlToken(kind: string, text: string) {
+  const span = html("span", text);
+  span.className = "token-" + kind;
+  return span;
+}
+export function structuredText(source: Element): string {
+  function render(e: Element): string {
+    const count = () =>
+      Math.min(1000, Math.max(0, Number(e.getAttribute("Num")) || 1));
+    if (e.localName === "Blank") return " ".repeat(count());
+    if (e.localName === "NewLine") return "\n".repeat(count());
+    if (e.localName === "Token") return e.getAttribute("Text") || "";
+    if (e.localName === "LineComment")
+      return "//" + (all(e, "Text")[0]?.textContent || "");
+    if (
+      e.localName === "Access" &&
+      ["LocalVariable", "GlobalVariable"].includes(
+        e.getAttribute("Scope") || "",
+      )
+    ) {
+      const scope = e.getAttribute("Scope");
+      const components = Array.from(all(e, "Symbol")[0]?.children || []).filter(
+        (c) => c.localName === "Component",
+      );
+      return (
+        (scope === "LocalVariable" ? "#" : "") +
+        components
+          .map((c, i) => {
+            const n = c.getAttribute("Name") || "";
+            const name =
+              (scope === "GlobalVariable" && i === 0) ||
+              !/^[A-Za-z_][A-Za-z_0-9]*$/.test(n)
+                ? '"' + n.replace(/"/g, '$"') + '"'
+                : n;
+            const indexes = Array.from(c.children)
+              .filter((c) => c.localName === "Access")
+              .map(render);
+            return (
+              name + (indexes.length ? "[" + indexes.join(", ") + "]" : "")
+            );
+          })
+          .join(".")
+      );
+    }
+    if (e.localName === "Constant")
+      return (
+        e.getAttribute("Name") || all(e, "ConstantValue")[0]?.textContent || ""
+      );
+    const children = Array.from(e.children).map(render).join("");
+    if (e.localName === "Instruction")
+      return (e.getAttribute("Name") || "") + children;
+    return children;
+  }
+  return render(source);
 }

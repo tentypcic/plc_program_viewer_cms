@@ -1774,3 +1774,10 @@ form > .dialog-actions {
   margin: 0;
   vertical-align: middle;
 }
+.tia-scl {
+  white-space: pre;
+  overflow: auto;
+  line-height: 1.6;
+  font-size: 12px;
+  padding: 12px;
+}

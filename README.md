@@ -11,8 +11,8 @@ No backend, accounts or project uploads. User documentation stays in browser Ind
 
 ## 🛠 Features
 
-- TIA Openness XML ZIP import: folder tree, OB/FC/FB/DB, UDT and PLC tag tables; original XML retained.
-- LAD documentation preview for the supplied V18 reference: contacts, coils, SR, TON, ADD and FC/FB calls, including operands, constants and instances.
+- TIA Openness XML/SCL ZIP import: folder tree, OB/FC/FB/DB, UDT, PLC tag tables, ArrayDB and technology interfaces; source text retained.
+- LAD documentation preview for the supplied V18 reference: contacts, coils, SR, TON, ADD and FC/FB calls, including operands, constants and instances; SET/RESET coils, negated contacts and mixed LAD/StructuredText networks.
 - Compact project tree, single-click folder expansion, preserved document selection, light/dark themes and fewer duplicate document controls.
 - Project catalog, descriptions, pinning, duplication, trash and restore.
 - Groups/subgroups, explicit OB / FB / FC / DB / UDT / TAGS / OTHER types and F-block labels.
