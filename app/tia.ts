@@ -180,12 +180,14 @@ export type TiaSymbolIndex = {
   block: (name: string, type: string) => string | undefined;
   operand: (name: string) => string | undefined;
   defaultInput: (name: string, type: string, pin: string) => string | undefined;
+  safetyOperand: (name: string) => boolean;
 };
 export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
   const cached = symbolCache.get(project);
   if (cached) return cached;
   const inputDefaults = new Map<string, Set<string>>();
   const owners = new Map<string, Set<string>>();
+  const safetyDBs = new Set<string>();
   const blocks = new Map<string, Set<string>>(),
     tags = new Map<string, Set<string>>();
   const put = (map: Map<string, Set<string>>, key: string, address: string) => {
@@ -197,6 +199,7 @@ export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
     if (!/\.xml$/i.test(d.name) || !d.text) continue;
     try {
       const p = parseTia(d.text);
+      if (p.type === "DB" && p.safety) safetyDBs.add(p.name);
       const key = p.type + ":" + p.name;
       const found = owners.get(key) || new Set<string>();
       found.add(d.nodeId);
@@ -229,6 +232,11 @@ export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
     return set?.size === 1 ? [...set][0] : undefined;
   };
   const index = {
+    safetyOperand: (name: string) =>
+      [...safetyDBs].some(
+        (db) =>
+          name === db || name.startsWith(db + ".") || name.startsWith(db + "["),
+      ),
     defaultInput: (name: string, type: string, pin: string) =>
       owners.get(type + ":" + name)?.size === 1
         ? unique(inputDefaults, type + ":" + name + ":" + pin)
@@ -504,6 +512,70 @@ function drawNetwork(
       ];
     }),
   );
+  const sourceForPin = (uid: string, pin: string) => {
+    const links = wires.filter((w) =>
+      all(w, "NameCon").some(
+        (c) => id(c) === uid && c.getAttribute("Name") === pin,
+      ),
+    );
+    const sources = links.flatMap((w) =>
+      all(w, "NameCon").filter(
+        (c) => id(c) !== uid && output(id(c), c.getAttribute("Name") || ""),
+      ),
+    );
+    const label = links
+      .flatMap((w) => all(w, "IdentCon"))
+      .map((c) => accesses.get(id(c)) || "")
+      .join(" ");
+    const branchLabels = sources.flatMap((c) =>
+      wires
+        .filter((w) =>
+          all(w, "NameCon").some(
+            (n) => id(n) === id(c) && n.getAttribute("Name") === "operand",
+          ),
+        )
+        .flatMap((w) => all(w, "IdentCon"))
+        .map((a) => accesses.get(id(a)) || ""),
+    );
+    return {
+      label,
+      branch: sources.length > 0,
+      lines: Math.max(1, ...branchLabels.map((s) => Math.ceil(s.length / 30))),
+      pulse: sources.some((c) =>
+        ["PContact", "NContact"].includes(
+          kind(parts.find((p) => id(p) === id(c))!),
+        ),
+      ),
+    };
+  };
+  const pinOffsets = new Map<string, Map<string, number>>();
+  for (const part of parts) {
+    const offsets = new Map<string, number>();
+    for (const out of [false, true]) {
+      let offset = 0,
+        previousLines = 1,
+        previousPulse = false;
+      const side = pins.get(id(part))!.filter((p) => p.out === out);
+      side.forEach((pin, i) => {
+        const source = sourceForPin(id(part), pin.name);
+        if (i)
+          offset += Math.max(
+            rowGap,
+            previousLines * 13 + 20,
+            source.branch ? source.lines * 13 + 30 : rowGap,
+            previousPulse ? 65 : 0,
+          );
+        if (kind(part) === "Sr" && pin.name === "r1")
+          offset = Math.max(offset, 3 * rowGap);
+        if (kind(part) === "Add" && pin.name === "out")
+          offset = Math.max(offset, rowGap);
+        offsets.set(pin.name, offset);
+        previousLines = Math.max(1, Math.ceil(source.label.length / 38));
+        previousPulse = source.pulse;
+      });
+    }
+    pinOffsets.set(id(part), offsets);
+  }
   const roomy =
     parts.some((p) =>
       all(p, "Parameter").some(
@@ -535,16 +607,9 @@ function drawNetwork(
     );
   };
   const pitch = Math.max(
-    parts.some((p) => kind(p) === "Sr") ? 44 + 4 * rowGap + 30 : 110,
-    ...[...pins.values()].map(
-      (list) =>
-        44 +
-        Math.max(
-          list.filter((p) => p.out).length,
-          list.filter((p) => !p.out).length,
-        ) *
-          rowGap +
-        30,
+    120,
+    ...[...pinOffsets.values()].map(
+      (offsets) => 44 + Math.max(0, ...offsets.values()) + 80,
     ),
   );
   const levels = new Map(parts.map((p) => [id(p), 0]));
@@ -603,18 +668,8 @@ function drawNetwork(
       y: 60 + row * pitch,
     });
   }
-  const pinRow = (uid: string, name: string) => {
-    const list = pins.get(uid) || [];
-    const pin = list.find((p) => p.name === name);
-    if (!pin) return 0;
-    const side = list.filter((p) => p.out === pin.out);
-    const k = kind(parts.find((p) => id(p) === uid)!);
-    return k === "Add" && name === "out"
-      ? 1
-      : k === "Sr" && name.toLowerCase() === "r1"
-        ? 3
-        : side.indexOf(pin);
-  };
+  const pinRow = (uid: string, name: string) =>
+    (pinOffsets.get(uid)?.get(name) || 0) / rowGap;
   // Align inline contacts to the actual destination pin, not to an arbitrary row.
   for (let pass = 0; pass < parts.length; pass++)
     for (const p of parts.filter((p) =>
@@ -728,6 +783,27 @@ function drawNetwork(
         e.append(span);
       });
     }
+    if (
+      cls === "tia-operand" &&
+      ((safety && value.startsWith("#")) || symbols?.safetyOperand(value))
+    ) {
+      const spans = [...e.querySelectorAll("tspan")];
+      const top = Number(spans[0]?.getAttribute("y") || y) - 11;
+      const w = Math.max(
+        16,
+        ...spans.map((s) => (s.textContent?.length || 0) * 6.7 + 8),
+      );
+      const r = add("rect", {
+        x: anchor === "middle" ? x - w / 2 : anchor === "end" ? x - w : x - 4,
+        y: top,
+        width: w,
+        height: Math.max(1, spans.length) * 13 + 3,
+        fill: "#ffff49",
+        class: "tia-safety-operand",
+      });
+      svg.insertBefore(r, e);
+      e.classList.add("tia-safety-symbol");
+    }
     if (cls === "tia-operand" || label !== value) {
       const title = document.createElementNS(svg.namespaceURI, "title");
       title.textContent = value;
@@ -778,9 +854,25 @@ function drawNetwork(
         const pos = positions.get(id(c));
         if (!pos) continue;
         if (metadata(name)) {
+          const simple = [
+            "Contact",
+            "PContact",
+            "NContact",
+            "Coil",
+            "SCoil",
+            "RCoil",
+          ].includes(kind(parts.find((p) => id(p) === id(c))!));
+          const operand = accesses.get(id(access)) || "?";
+          const labelY =
+            pos.y +
+            (name.toLowerCase() === "bit"
+              ? 64 + (Math.ceil(operand.length / 38) - 1) * 13
+              : simple
+                ? 30
+                : -10);
           text(
             pos.x + 75,
-            pos.y + (name.toLowerCase() === "bit" ? 88 : -10),
+            labelY,
             accesses.get(id(access)) || "?",
             "middle",
             "tia-operand",
@@ -789,7 +881,7 @@ function drawNetwork(
           if (addr)
             text(
               pos.x + 75,
-              pos.y + (name.toLowerCase() === "bit" ? 104 : -26),
+              labelY - Math.ceil(operand.length / 38) * 13 - 5,
               addr,
               "middle",
               "tia-address",

@@ -68,3 +68,11 @@ MOVE instructions have EN/ENO and IN/OUT1 pins. FlgNet `O` parts are shown as wi
 LocalConstant accesses retain their symbolic name and show an explicitly exported value or a supported elementary type default (for example Int zero). If the declaration cannot be resolved, the name remains visible without a fabricated value. Open call inputs show only an explicitly exported default from a uniquely resolved target interface; the label is muted and its tooltip says that the pin is unassigned. This is not an online value.
 
 The default 100% scale uses the same base font/symbol geometry across networks, with horizontal scrolling for wide networks. Diagram scale applies 50/75/100/125/150% to all networks in the current block; Fit width is a separate option. Compact column spacing and extra separation for SR reset paths reduce excessive whitespace and label collisions. Approximation information is available via the ≈ marker on relevant network headers.
+
+## Operand spacing, safety provenance and credit
+
+Contact/coil captions are positioned relative to their signal wire. Input pin offsets reserve extra height for an inline contact caption, multiline operands and edge-memory text. Geometry regression checks compare operand bounding boxes to prevent the contact/pin label overlap found in mixed direct-input and contact-input calls.
+
+Yellow operand backgrounds identify fields of imported F_DB declarations, including use from standard FC/FB blocks, and local symbols in F-language block views. Matching uses metadata and DB-name boundaries, not words such as Safety in a name. Physical tag safety provenance cannot be inferred when the export lacks hardware/F-channel metadata; those tags are not colored by name alone. This is static source highlighting, not online signal state.
+
+The catalog footer and project status bar include `Created by tentypcic · PLC Viewer` with a link to the author's GitHub profile.

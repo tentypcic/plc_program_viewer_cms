@@ -20,6 +20,12 @@ try {
     viewport: { width: 1440, height: 1000 },
   });
   await page.goto(server.resolvedUrls.local[0]);
+  assert.equal(
+    await page
+      .getByRole("link", { name: "tentypcic", exact: true })
+      .getAttribute("href"),
+    "https://github.com/tentypcic",
+  );
   const result = await page.evaluate(async (files) => {
     const {
       importTia,
@@ -200,6 +206,64 @@ try {
         ?.textContent.startsWith("True")
     )
       throw Error("Open pin default from declaration");
+    const safeProject = structuredClone(p);
+    safeProject.documents.find((d) => d.name === "DemoData.xml").text =
+      safeProject.documents
+        .find((d) => d.name === "DemoData.xml")
+        .text.replace(
+          "<Number>4</Number>",
+          "<Number>4</Number><ProgrammingLanguage>F_DB</ProgrammingLanguage>",
+        );
+    const safeIndex = tiaSymbolIndex(safeProject);
+    if (
+      !safeIndex.safetyOperand("DemoData.Request") ||
+      safeIndex.safetyOperand("DemoDataOther.Request")
+    )
+      throw Error("Safety DB scope");
+    if (
+      !tiaView(
+        files["Program blocks/SampleCycle.xml"],
+        "en",
+        undefined,
+        safeIndex,
+      ).querySelector(".tia-safety-operand")
+    )
+      throw Error("Safety member in standard caller");
+    const safeLocals = tiaView(
+      demo.replace(
+        "<Number>7</Number>",
+        "<Number>7</Number><ProgrammingLanguage>F_LAD</ProgrammingLanguage>",
+      ),
+    );
+    if (safeLocals.querySelectorAll(".tia-safety-operand").length !== 2)
+      throw Error("F local highlighting");
+    const alignParts =
+      '<Access Scope="LocalVariable" UId="21"><Symbol><Component Name="mode"/></Symbol></Access><Access Scope="LocalVariable" UId="22"><Symbol><Component Name="state"/></Symbol></Access><Part Name="Contact" UId="30"/><Part Name="Contact" UId="31"/><Call UId="32"><CallInfo Name="DemoTarget" BlockType="FB"><Parameter Name="State" Section="Input"/><Parameter Name="Auto" Section="Input"/><Parameter Name="Manual" Section="Input"/></CallInfo></Call>';
+    const alignWires =
+      wire("<Powerrail/>" + pin(30, "in") + pin(31, "in") + pin(32, "en")) +
+      wire('<IdentCon UId="21"/>' + pin(30, "operand")) +
+      wire('<IdentCon UId="21"/>' + pin(31, "operand")) +
+      wire('<IdentCon UId="22"/>' + pin(32, "State")) +
+      wire(pin(30, "out") + pin(32, "Auto")) +
+      wire(pin(31, "out") + pin(32, "Manual"));
+    const aligned = tiaView(netXml(alignParts, alignWires));
+    document.body.append(aligned);
+    const boxes = [...aligned.querySelectorAll("text.tia-operand")].map((e) =>
+      e.getBBox(),
+    );
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i],
+          b = boxes[j];
+        if (
+          a.x < b.x + b.width &&
+          b.x < a.x + a.width &&
+          a.y < b.y + b.height &&
+          b.y < a.y + a.height
+        )
+          throw Error("Contact and pin labels overlap");
+      }
+    aligned.remove();
     const index = tiaSymbolIndex(p);
     if (
       index.block("DemoControl", "FC") !== "%FC7" ||
@@ -402,6 +466,12 @@ try {
     "100%",
   );
   await page.getByLabel("Skala schematu", { exact: true }).selectOption("100");
+  assert.equal(
+    await page
+      .getByRole("link", { name: "tentypcic", exact: true })
+      .getAttribute("href"),
+    "https://github.com/tentypcic",
+  );
   assert.equal(await page.locator(".doc-chip").count(), 0);
   const program = page
     .getByRole("treeitem")

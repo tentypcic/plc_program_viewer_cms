@@ -117,6 +117,19 @@ function stats(p: Project) {
     ? `${blocks} ${noun(blocks, "blok", "bloki", "bloków")} · ${files} ${noun(files, "dokument", "dokumenty", "dokumentów")}`
     : `${blocks} ${blocks === 1 ? "block" : "blocks"} · ${files} ${files === 1 ? "document" : "documents"}`;
 }
+function authorCredit() {
+  const footer = el("footer", "app-credit");
+  const link = el("a", "", "tentypcic");
+  link.href = "https://github.com/tentypcic";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  footer.append(
+    document.createTextNode("Created by "),
+    link,
+    document.createTextNode(" · PLC Viewer"),
+  );
+  return footer;
+}
 function label(n: PlcNode) {
   return (
     (
@@ -786,7 +799,10 @@ function render() {
   append(shell, rail, body);
   root.append(shell);
   if (current) renderWorkspace(main);
-  else renderCatalog(main);
+  else {
+    renderCatalog(main);
+    body.append(authorCredit());
+  }
   if (pending) {
     rail.inert = true;
     header.inert = true;
@@ -1326,6 +1342,7 @@ function renderWorkspace(main: HTMLElement) {
     status,
     el("span", "", edit ? t("editMode") : t("read")),
     el("span", "", t("version") + " " + p.revision),
+    authorCredit(),
     el("span", "", t("saved")),
   );
   center.append(status);
