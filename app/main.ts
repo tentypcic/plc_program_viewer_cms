@@ -1,4 +1,5 @@
 import "./style.css";
+import { tiaView } from "./tia";
 import {
   el,
   button,
@@ -662,7 +663,7 @@ function render() {
   document.documentElement.lang = lang;
   document.title = current ? current.name + " · PLC Viewer" : "PLC Viewer";
   root.replaceChildren();
-  const shell = el("div", "shell");
+  const shell = el("div", "shell" + (current ? " workspace-shell" : ""));
   const rail = el("aside", "rail");
   append(
     rail,
@@ -915,6 +916,8 @@ function renderCatalog(main: HTMLElement) {
     cards.append(card);
   }
 }
+const treePositions = new Map<string, number>();
+const TREE_ROW_HEIGHT = 28;
 const searchCache = new Map<
   string,
   { revision: number; index: Map<string, string> }
@@ -990,7 +993,6 @@ function renderWorkspace(main: HTMLElement) {
     explorerHead,
     button("← " + t("back"), back, "text-button"),
     el("h2", "", p.name),
-    el("p", "muted", stats(p)),
   );
   aside.append(explorerHead);
   const mode = button(
@@ -1002,7 +1004,6 @@ function renderWorkspace(main: HTMLElement) {
     "mode-button" + (edit ? " editing" : ""),
   );
   mode.setAttribute("aria-pressed", String(edit));
-  aside.append(mode);
   const treeTools = el("div", "tree-tools");
   append(
     treeTools,
@@ -1033,6 +1034,7 @@ function renderWorkspace(main: HTMLElement) {
       button("+ " + t("group"), () => nodeForm("group"), "button small"),
       button("+ " + t("block"), () => nodeForm("block"), "button small"),
     );
+  treeTools.append(mode);
   aside.append(treeTools);
   const tree = el("div", "tree-scroll");
   tree.setAttribute("role", "tree");
@@ -1067,22 +1069,25 @@ function renderWorkspace(main: HTMLElement) {
   visit(null, 1);
   let start = -1;
   function windowRows() {
-    const next = Math.max(0, Math.floor(tree.scrollTop / 34) - 8);
+    const next = Math.max(0, Math.floor(tree.scrollTop / TREE_ROW_HEIGHT) - 8);
     if (next === start) return;
     start = next;
     const end = Math.min(
       flat.length,
-      start + Math.ceil((tree.clientHeight || 600) / 34) + 20,
+      start + Math.ceil((tree.clientHeight || 600) / TREE_ROW_HEIGHT) + 20,
     );
     tree.replaceChildren();
     const top = el("div");
-    top.style.height = start * 34 + "px";
+    top.style.height = start * TREE_ROW_HEIGHT + "px";
     tree.append(top);
     for (let i = start; i < end; i++) {
       const { n, level } = flat[i];
       const row = el(
         "div",
-        "tree-row" + (selected === n.id ? " selected" : ""),
+        "tree-row" +
+          (n.kind === "group" ? " tree-group" : "") +
+          (n.parentId === null ? " tree-root" : "") +
+          (selected === n.id ? " selected" : ""),
       );
       row.style.paddingLeft = (level - 1) * 16 + 10 + "px";
       row.setAttribute("role", "treeitem");
@@ -1108,30 +1113,27 @@ function renderWorkspace(main: HTMLElement) {
           "node-icon " +
             n.blockType.toLowerCase() +
             (n.safety ? " safety" : ""),
-          n.kind === "group" ? "▱" : n.blockType,
+          n.kind === "group" ? "▰" : n.blockType,
         ),
         el("span", "node-name", label(n)),
       );
       row.title = pathName(p, n.id);
       row.onclick = (e) => {
         if ((e.target as HTMLElement).closest("button")) return;
-        chooseNode(n);
-      };
-      row.ondblclick = () => {
         if (n.kind === "group") toggle(n);
+        else chooseNode(n);
       };
       row.onkeydown = (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          chooseNode(n);
+          if (n.kind === "group") toggle(n);
+          else chooseNode(n);
         }
         if (e.key === "ArrowRight" && n.kind === "group") {
-          expanded.add(n.id);
-          render();
+          if (!expanded.has(n.id)) toggle(n);
         }
         if (e.key === "ArrowLeft") {
-          expanded.delete(n.id);
-          render();
+          if (expanded.has(n.id)) toggle(n);
         }
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
@@ -1139,7 +1141,7 @@ function renderWorkspace(main: HTMLElement) {
             0,
             Math.min(flat.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)),
           );
-          tree.scrollTop = Math.max(0, (target - 4) * 34);
+          tree.scrollTop = Math.max(0, (target - 4) * TREE_ROW_HEIGHT);
           start = -1;
           windowRows();
           tree
@@ -1156,7 +1158,7 @@ function renderWorkspace(main: HTMLElement) {
       tree.append(row);
     }
     const bottom = el("div");
-    bottom.style.height = (flat.length - end) * 34 + "px";
+    bottom.style.height = (flat.length - end) * TREE_ROW_HEIGHT + "px";
     tree.append(bottom);
   }
   function toggle(n: PlcNode) {
@@ -1165,7 +1167,10 @@ function renderWorkspace(main: HTMLElement) {
     start = -1;
     windowRows();
   }
-  tree.onscroll = windowRows;
+  tree.onscroll = () => {
+    treePositions.set(p.id, tree.scrollTop);
+    windowRows();
+  };
   aside.append(tree);
   const footer = el("div", "explorer-footer");
   append(
@@ -1303,7 +1308,13 @@ function renderWorkspace(main: HTMLElement) {
   append(main, aside, separator, center);
   requestAnimationFrame(() => {
     const index = flat.findIndex((row) => row.n.id === selected);
-    if (index >= 0) tree.scrollTop = Math.max(0, (index - 3) * 34);
+    tree.scrollTop = treePositions.get(p.id) || 0;
+    if (
+      index >= 0 &&
+      (index * TREE_ROW_HEIGHT < tree.scrollTop ||
+        (index + 1) * TREE_ROW_HEIGHT > tree.scrollTop + tree.clientHeight)
+    )
+      tree.scrollTop = Math.max(0, (index - 3) * TREE_ROW_HEIGHT);
     windowRows();
   });
 }
@@ -1343,10 +1354,15 @@ function renderNodeHeader(host: HTMLElement, n: PlcNode) {
   header.append(line);
   if (n.description) header.append(el("p", "muted", n.description));
   const docs = el("div", "doc-list");
-  for (const d of current!.documents.filter((d) => d.nodeId === n.id)) {
+  const nodeDocs = current!.documents.filter((d) => d.nodeId === n.id);
+  for (const d of edit || nodeDocs.length > 1 ? nodeDocs : []) {
     docs.append(
       button(
-        (d.mime === "application/pdf" ? "PDF " : "TXT ") + d.name,
+        (d.mime === "application/pdf"
+          ? "PDF "
+          : /\.xml$/i.test(d.name)
+            ? "XML "
+            : "TXT ") + d.name,
         () => openDoc(d.id),
         "doc-chip" + (activeDoc === d.id ? " active" : ""),
       ),
@@ -1359,7 +1375,7 @@ function renderNodeHeader(host: HTMLElement, n: PlcNode) {
       button("+ " + t("addUrl"), () => urlForm(n), "button small"),
       button("+ " + t("addText"), () => textForm(n), "button small"),
     );
-  header.append(docs);
+  if (docs.childElementCount) header.append(docs);
   if (n.alarmCode || n.remedy || n.sequence) {
     const details = el("details", "diagnostics");
     details.append(el("summary", "", t("diagnostics")));
@@ -1475,7 +1491,7 @@ async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
     a.rel = "noopener noreferrer";
     toolbar.append(a);
   }
-  if (doc.mime !== "application/pdf" && doc.text !== undefined)
+  if (edit && doc.mime !== "application/pdf" && doc.text !== undefined)
     toolbar.append(
       button(t("compareCode"), () => compareText(doc), "button small"),
     );
@@ -1529,6 +1545,14 @@ async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
     const code = el("code");
     const text = doc.text ?? (await (await repo.asset(doc.id))!.text());
     if (epoch !== contentEpoch) return;
+    if (/\.xml$/i.test(doc.name) && /<SW\.(Blocks|Types|Tags)\./.test(text)) {
+      try {
+        content.append(tiaView(text, lang));
+        return;
+      } catch (error) {
+        content.append(el("p", "muted", String(error)));
+      }
+    }
     if (/\.(scl|st)$/i.test(doc.name) && text.length <= 150000) {
       for (const token of tokenize(text))
         code.append(el("span", "token-" + token.kind, token.text));
@@ -1701,4 +1725,3 @@ async function boot() {
   }
 }
 void boot();
-

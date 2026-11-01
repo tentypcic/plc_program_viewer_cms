@@ -124,7 +124,7 @@ const pl = {
   codeHelp:
     "Podgląd składni SCL jest leksykalny. Nie wykonuje kodu ani nie sprawdza poprawności programu.",
   importHint:
-    "JSON: nowy lub starszy format. ZIP: manifest i lokalne dokumenty. Maks. 100 MiB pliku, 250 MiB po rozpakowaniu.",
+    "JSON: nowy lub starszy format. ZIP: kopia Viewer lub eksport TIA XML z folderami. Maks. 100 MiB pliku, 250 MiB po rozpakowaniu.",
   noLegacy: "Brak kopii danych sprzed migracji.",
   openTabs: "Otwarte dokumenty",
   more: "Więcej",
@@ -258,7 +258,7 @@ const en: Record<keyof typeof pl, string> = {
   codeHelp:
     "SCL highlighting is lexical. It does not execute or validate PLC programs.",
   importHint:
-    "JSON: current or legacy format. ZIP: manifest and local documents. Max 100 MiB file, 250 MiB unpacked.",
+    "JSON: current or legacy format. ZIP: Viewer backup or TIA XML export with folders. Max 100 MiB file, 250 MiB unpacked.",
   noLegacy: "No pre-migration backup.",
   openTabs: "Open documents",
   more: "More",
@@ -271,4 +271,3 @@ export type Lang = "pl" | "en";
 export function translator(lang: Lang) {
   return (key: Key) => (lang === "pl" ? pl[key] : en[key]);
 }
-

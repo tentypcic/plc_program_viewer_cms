@@ -11,6 +11,9 @@ No backend, accounts or project uploads. User documentation stays in browser Ind
 
 ## 🛠 Features
 
+- TIA Openness XML ZIP import: folder tree, OB/FC/FB/DB, UDT and PLC tag tables; original XML retained.
+- LAD documentation preview for the supplied V18 reference: contacts, coils, SR, TON, ADD and FC/FB calls, including operands, constants and instances.
+- Compact project tree, single-click folder expansion, preserved document selection, light/dark themes and fewer duplicate document controls.
 - Project catalog, descriptions, pinning, duplication, trash and restore.
 - Groups/subgroups, explicit OB / FB / FC / DB / UDT / TAGS / OTHER types and F-block labels.
 - Virtualized tree, context menus, document tabs, movable nodes and a resizable workspace.
@@ -39,6 +42,7 @@ npm test
 npm run build
 npx playwright install --with-deps chromium
 npm run test:e2e
+npm run test:tia
 ```
 
 ## 💾 Data and Recovery
@@ -49,9 +53,15 @@ Use **ZIP backup** for portable copies: JSON contains structure/text, not local 
 
 ## 🧪 Verification
 
-**23 tests** and the TypeScript/production build passed on 1 November 2026. Coverage includes migration, ZIP paths/attachments, schema validation, concurrent writes, rollback, history and UUID creation on HTTP hosts without `crypto.randomUUID`.
+**24 unit tests**, **11 production browser scenarios**, the TIA reference browser check and the TypeScript/production build passed on 1 November 2026. Coverage includes migration, ZIP paths/attachments, schema validation, concurrent writes, rollback, history and UUID creation on HTTP hosts without `crypto.randomUUID`.
 
-The E2E suite targets the production build under `/plc_program_viewer_cms/`. Its existence is not evidence of a successful run. Chromium UI checks include creating and reopening a project; other browsers and actual large PDF collections need separate checks.
+The E2E suite targets the production build under `/plc_program_viewer_cms/`. Chromium checks passed locally, including creating and reopening projects, PDF/ZIP roundtrips, tabs, themes and tree virtualization. Other browsers and actual large PDF collections need separate checks.
+
+## TIA XML import
+
+Choose **Import** and select a ZIP containing Openness XML files in folders such as `Program blocks`, `PLC tags` and `PLC data types`. Import creates a separate local project; existing projects remain unchanged in copy mode. Select a block to view its interface/data table and collapsible LAD networks. The original XML remains available in the document and portable backups.
+
+The user-supplied reference export was verified locally (8 XML objects, 5 wired networks, 3 empty networks). It is not published in this repository. Tests in the repository use an independently authored synthetic project. `npm run test:tia` verifies ZIP parsing, symbols, arrays, constants, interfaces, tags, project-tree interaction, reopening, themes and mobile overflow. See [TIA preview scope](docs/TIA_XML.md) for limitations.
 
 ## ⚠️ Limits
 

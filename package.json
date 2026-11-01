@@ -6,7 +6,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "node --test tests/browser.test.cjs",
     "build": "tsc --noEmit && vite build && node scripts/static.mjs",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test:tia": "node scripts/check-tia.mjs"
   },
   "devDependencies": {
     "@types/diff": "^7.0.2",
@@ -25,4 +26,3 @@
   },
   "type": "module"
 }
-

@@ -1238,3 +1238,239 @@ form > .dialog-actions {
   }
 }
 
+.tia-view {
+  padding: 20px;
+  width: 100%;
+  min-width: 0;
+}
+.tia-view details {
+  margin: 14px 0;
+  border: 1px solid #8993a455;
+  padding: 12px;
+}
+.tia-view summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.tia-view table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 12px;
+}
+.tia-view td,
+.tia-view th {
+  padding: 7px 12px;
+  border-bottom: 1px solid #8993a455;
+  text-align: left;
+}
+.tia-network {
+  overflow: auto;
+  margin-top: 12px;
+}
+.tia-network svg {
+  max-width: none;
+  font-family: monospace;
+}
+.tia-view pre {
+  overflow: auto;
+  max-height: 500px;
+}
+:root[data-theme="dark"] {
+  --tia-box: #283d53;
+}
+
+/* A compact engineering workspace: the tree and document take priority. */
+.workspace-shell .rail {
+  width: 48px;
+  padding: 12px 4px;
+  gap: 8px;
+}
+.workspace-shell .brand {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+  font-size: 20px;
+}
+.workspace-shell .rail-button {
+  width: 34px;
+  height: 34px;
+}
+.workspace-shell .body {
+  margin-left: 48px;
+  width: calc(100% - 48px);
+}
+.workspace-shell .topbar {
+  height: 56px;
+  padding: 0 20px;
+  gap: 20px;
+}
+.workspace-shell .workspace {
+  height: calc(100dvh - 56px);
+}
+.workspace-shell .local-badge {
+  display: none;
+}
+.workspace-shell .breadcrumb {
+  max-width: 320px;
+}
+.workspace-shell .search-wrap {
+  max-width: 420px;
+  margin: 0 0 0 auto;
+}
+.workspace-shell .search {
+  height: 33px;
+  border-radius: 5px;
+}
+.workspace-shell .search-icon {
+  top: 5px;
+}
+.workspace-shell kbd {
+  top: 8px;
+}
+.explorer {
+  background: var(--surface2);
+}
+.explorer-head {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.explorer-head h2 {
+  font-size: 14px;
+  margin-top: 7px;
+}
+.tree-tools {
+  padding: 7px 8px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mode-button {
+  margin: 0 0 0 auto;
+  padding: 6px 8px;
+  font-size: 10px;
+  background: var(--surface);
+}
+.tree-row {
+  height: 28px;
+  font-size: 12px;
+  gap: 5px;
+  border-left-width: 3px;
+}
+.tree-group .node-name {
+  font-weight: 600;
+}
+.tree-root {
+  border-top: 1px solid var(--line);
+}
+.tree-root:first-of-type {
+  border-top: 0;
+}
+.tree-row.selected {
+  background: var(--accentsoft);
+}
+.tree-row:hover {
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface2));
+}
+.node-icon {
+  min-width: 22px;
+  font-size: 8px;
+  border-radius: 2px;
+  padding: 1px 2px;
+  background: var(--surface);
+}
+.tree-group .node-icon {
+  border: 0;
+  background: none;
+  color: #a8863c;
+  font-size: 17px;
+}
+.explorer-footer {
+  padding: 8px;
+}
+.explorer-footer .button {
+  padding: 5px 8px;
+  font-size: 10px;
+}
+.node-header {
+  padding: 12px 20px;
+}
+.node-title-line h2 {
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.tabs {
+  min-height: 34px;
+}
+.tab-label {
+  padding: 8px 12px;
+}
+.statusbar {
+  font-size: 10px;
+}
+.tia-view {
+  padding: 16px 20px;
+}
+.tia-view > h2 {
+  display: none;
+}
+.tia-view > p {
+  font-size: 11px;
+  color: var(--muted);
+}
+.tia-view details {
+  border-radius: 4px;
+  background: var(--surface);
+}
+.tia-view summary {
+  font-size: 12px;
+}
+.tia-view table {
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .workspace-shell .topbar {
+    height: auto;
+    padding: 12px 15px;
+    gap: 10px;
+  }
+  .workspace-shell .search-wrap {
+    min-width: 100%;
+  }
+  .workspace-shell .workspace {
+    height: auto;
+  }
+  .workspace-shell .breadcrumb {
+    max-width: 170px;
+  }
+  .explorer {
+    height: 300px;
+  }
+  .explorer-head {
+    padding: 8px 12px;
+  }
+  .explorer-head h2 {
+    margin-top: 0;
+  }
+  .mode-button {
+    margin: 0 0 0 auto;
+  }
+  .node-header {
+    padding: 12px;
+  }
+}
+.tia-network svg {
+  width: 100%;
+  height: auto;
+  min-width: 880px;
+}
+.tia-operand {
+  fill: var(--text);
+}
+.tia-instruction {
+  font-weight: 600;
+}
+:root[data-theme="dark"] {
+  --tia-title: #344c65;
+}
+.tia-network text {
+  fill: currentColor;
+}

@@ -8,6 +8,7 @@ import {
 } from "./model";
 import { importData } from "./legacy";
 import { decodeText } from "./text";
+import { importTia } from "./tia";
 import type { Repository, Asset } from "./db";
 export const MAX_ARCHIVE = 100 * 1024 * 1024;
 const MAX_UNPACKED = 250 * 1024 * 1024;
@@ -55,13 +56,30 @@ export async function readImport(
           ++count > 20001 ||
           entry.originalSize > 50 * 1024 * 1024 ||
           (total += entry.originalSize) > MAX_UNPACKED ||
-          !/^(manifest\.json|documents\/[a-f0-9-]{36})$/i.test(entry.name)
+          /(^\/|\\|(^|\/)\.\.(\/|$))/.test(entry.name) ||
+          !/^(.*\/|.*\.xml|manifest\.json|documents\/[a-f0-9-]{36})$/i.test(
+            entry.name,
+          )
         )
           throw Error("Unsafe or excessive ZIP entry");
         return true;
       },
     });
-    if (!files["manifest.json"]) throw Error("Missing manifest.json");
+    if (!files["manifest.json"]) {
+      const xml: Record<string, string> = {};
+      for (const [path, bytes] of Object.entries(files)) {
+        if (path.endsWith("/")) continue;
+        if (!/\.xml$/i.test(path)) throw Error("Unexpected TIA ZIP entry");
+        xml[path] = await decodeText(
+          new Blob([bytes as Uint8Array<ArrayBuffer>]),
+        );
+      }
+      if (!Object.keys(xml).length) throw Error("No TIA XML files");
+      return {
+        projects: [importTia(xml, file.name.replace(/\.zip$/i, ""))],
+        assets: [],
+      };
+    }
     const bundle = JSON.parse(strFromU8(files["manifest.json"]));
     validateBundle(bundle);
     const assets: Asset[] = [];
@@ -107,4 +125,3 @@ export function copyImport(projects: Project[], assets: Asset[]) {
   }
   return { projects: copied, assets: nextAssets };
 }
-
