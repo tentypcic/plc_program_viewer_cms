@@ -53,7 +53,7 @@ Use **ZIP backup** for portable copies: JSON contains structure/text, not local 
 
 ## 🧪 Verification
 
-**24 unit tests**, **11 production browser scenarios**, the TIA reference browser check and the TypeScript/production build passed on 1 November 2026. Coverage includes migration, ZIP paths/attachments, schema validation, concurrent writes, rollback, history and UUID creation on HTTP hosts without `crypto.randomUUID`.
+**27 unit tests**, **11 production browser scenarios**, the TIA reference browser check and the TypeScript/production build passed on 3 November 2026. Coverage includes migration, ZIP paths/attachments, schema validation, concurrent writes, rollback, history and UUID creation on HTTP hosts without `crypto.randomUUID`.
 
 The E2E suite targets the production build under `/plc_program_viewer_cms/`. Chromium checks passed locally, including creating and reopening projects, PDF/ZIP roundtrips, tabs, themes and tree virtualization. Other browsers and actual large PDF collections need separate checks.
 
@@ -61,7 +61,7 @@ The E2E suite targets the production build under `/plc_program_viewer_cms/`. Chr
 
 Choose **Import** and select a ZIP containing Openness XML files in folders such as `Program blocks`, `PLC tags` and `PLC data types`. Import creates a separate local project; existing projects remain unchanged in copy mode. Select a block to view its interface/data table and collapsible LAD networks. The original XML remains available in the document and portable backups.
 
-The user-supplied reference export was verified locally (8 XML objects, 5 wired networks, 3 empty networks). It is not published in this repository. Tests in the repository use an independently authored synthetic project. `npm run test:tia` verifies ZIP parsing, symbols, arrays, constants, interfaces, tags, project-tree interaction, reopening, themes and mobile overflow. See [TIA preview scope](docs/TIA_XML.md) for limitations.
+The user-supplied reference exports were verified locally, including a larger mixed project with 312 documents and 720 rendered LAD networks. Geometry checks found no text overlaps, clipping, wire/body collisions or unmarked wire crossings in that larger sample. It is not published in this repository. Tests in the repository use an independently authored synthetic project. `npm run test:tia` verifies ZIP parsing, symbols, arrays, constants, interfaces, tags, project-tree interaction, reopening, themes, mobile overflow and complex diagram geometry in both themes. See [TIA preview scope](docs/TIA_XML.md) for limitations.
 
 ## ⚠️ Limits
 

@@ -7,7 +7,7 @@
     "test:e2e": "node --test tests/browser.test.cjs",
     "build": "tsc --noEmit && vite build && node scripts/static.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "test:tia": "node scripts/check-tia.mjs"
+    "test:tia": "node scripts/check-tia.mjs && node scripts/check-tia-layout.mjs"
   },
   "devDependencies": {
     "@types/diff": "^7.0.2",

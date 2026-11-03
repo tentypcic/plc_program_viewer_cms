@@ -18,7 +18,7 @@ The supplied V18 reference was verified locally: eight objects, five wired netwo
 
 This is a documentation preview, not a TIA runtime, compiler or equivalent editor. It has been validated against the supplied V18 export, not all Siemens versions or instruction libraries. The layout is computed rather than copied from TIA coordinates.
 
-Complex branching, junctions, GRAPH, FBD and vendor instructions need further implementation and reference exports. Basic negated contacts, N contacts, SET/RESET coils and StructuredText token reconstruction are supported; this is not full SCL semantic analysis. Unrecognized instruction boxes are marked generic; unsupported network source languages point to original XML. Do not assume a generic or branched diagram reproduces all execution semantics. UDT declarations are displayed; there is no cross-file type resolver or hardware-symbol resolver.
+Complex branching, junctions, GRAPH, FBD and vendor instructions need further implementation and reference exports. Basic negated contacts, N contacts, SET/RESET coils and StructuredText token reconstruction are supported; this is not full SCL semantic analysis. Networks with unrecognized instructions carry the approximation marker; unsupported network source languages point to original XML. Do not assume a generic or branched diagram reproduces all execution semantics. UDT declarations are displayed; there is no cross-file type resolver or hardware-symbol resolver.
 
 DB/UDT tables show explicitly exported `StartValue` or `DefaultValue`. When absent, basic Bool, string and numeric type defaults are shown in muted text with a tooltip; these are not live values. Unsupported type defaults remain empty. Retain shows the exported state or an em dash when unspecified. Nested members expand/collapse, and one-dimensional array previews lazily show up to 200 elements. Unconnected pins do not display live timer or numeric values.
 
@@ -59,7 +59,7 @@ Calls show `%FCn`/`%FBn` from uniquely resolved XML block metadata. Global FB in
 
 ## Network sheet layout
 
-Network headers use compact gray strips and the network body uses the current theme's paper surface. Operand names wrap across lines with the full name retained in a tooltip. Contact chains with a unique downstream pin align to that pin when it does not collide with an existing instruction.
+Network headers use compact gray strips and the network body uses the current theme's paper surface. Operand names wrap across lines with the full name retained in a tooltip. Contact chains with a unique downstream pin align to that pin. Chains and function boxes are packed together, then actual SVG glyph bounds are measured to separate any remaining collisions.
 
 MOVE instructions have EN/ENO and IN/OUT1 pins. FlgNet `O` parts are shown as wire junctions; multi-connector wires use shared buses with connection dots. These are improvements for the tested reset and MOVE fanout shapes, not a guarantee of identical TIA routing for all graphs. Complex networks retain the approximation notice. F-language block headers use a yellow safety color from XML metadata only; it is not online status or a safety verification.
 
@@ -76,3 +76,12 @@ Contact/coil captions are positioned relative to their signal wire. Input pin of
 Yellow operand backgrounds identify fields of imported F_DB declarations, including use from standard FC/FB blocks, and local symbols in F-language block views. Matching uses metadata and DB-name boundaries, not words such as Safety in a name. Physical tag safety provenance cannot be inferred when the export lacks hardware/F-channel metadata; those tags are not colored by name alone. This is static source highlighting, not online signal state.
 
 The catalog footer and project status bar include `Created by tentypcic · PLC Viewer` with a link to the author's GitHub profile.
+
+
+## Geometry audit (3 November 2026)
+
+The larger private reference was checked across all 720 rendered LAD networks. The automated scan found zero intersecting text labels, clipped labels, overlapping instruction bodies, wires entering labels/symbols/bodies, failed routes, shared tracks between unrelated nets or unmarked transverse crossings after this update. Representative mixed FB, OR, pulse, MOVE, safety and long-operand networks were also inspected visually. These checks concern drawing geometry, not complete PLC instruction semantics or equivalence with every TIA version.
+
+The renderer reserves the complete incoming branch height (including OR branches and edge memory), measures text in the browser's actual font, and packs labels with contact symbols and pin endpoints. Orthogonal routes avoid instruction and label interiors. Routing prefers fewer bends and separated tracks for unrelated signals. Where distinct nets still cross, a small jumper arc marks the absence of a connection; dots remain reserved for actual source-wire junctions. Disabled ENO connectors and intermediate coils do not get invented full-width continuation wires.
+
+`app/tia-routing.ts` contains the obstacle router. Unit tests exercise staggered obstacles, separate wire tracks, floating-point SVG edges and inaccessible endpoints. `npm run test:tia` also runs independent mixed-FB, multiline-label, pulse/OR and coil-fanout geometry checks in light and dark themes. Original customer XML, PDFs, screenshots and the private corpus audit remain outside the public repository.
