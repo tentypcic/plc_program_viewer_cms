@@ -542,6 +542,39 @@ test("closing a document tab selects its matching block, projects stay isolated"
     .filter({ hasText: "First" })
     .waitFor();
   assert.match(await page.locator(".code-view").innerText(), /First/);
+  assert.equal(
+    await page
+      .getByRole("button", {
+        name: "Zamknij wszystkie karty poza aktualną",
+        exact: true,
+      })
+      .isDisabled(),
+    true,
+  );
+  await codeBlock("Third");
+  await codeBlock("Fourth");
+  await page.getByRole("tab", { name: "Third.scl", exact: true }).click();
+  const beforeClosing = (await getProjects(page))[0];
+  await page
+    .getByRole("button", {
+      name: "Zamknij wszystkie karty poza aktualną",
+      exact: true,
+    })
+    .click();
+  assert.equal(await page.getByRole("tab").count(), 1);
+  assert.equal(
+    await page
+      .getByRole("tab", { name: "Third.scl", exact: true })
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  assert.match(await page.locator(".code-view").innerText(), /Third/);
+  assert.deepEqual((await getProjects(page))[0], beforeClosing);
+  await page.reload();
+  await page.getByRole("tab", { name: "Third.scl", exact: true }).waitFor();
+  assert.equal(await page.getByRole("tab").count(), 1);
+  await page.getByRole("treeitem").filter({ hasText: "First" }).click();
+  assert.equal(await page.getByRole("tab").count(), 2);
   const first = (await getProjects(page))[0];
   await page
     .getByRole("button", { name: "← Wszystkie projekty", exact: true })
@@ -578,4 +611,3 @@ test("GitHub Pages slug redirects preserve the repository root without redirect 
   assert.equal((await getProjects(page)).length, 1);
   await context.close();
 });
-

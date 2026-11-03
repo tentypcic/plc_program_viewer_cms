@@ -558,6 +558,34 @@ kbd {
   flex-direction: column;
   overflow: hidden;
 }
+.tabs-bar {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  background: var(--surface2);
+}
+.tabs-bar > .tabs {
+  flex: 1;
+  min-width: 0;
+}
+.tab-keep-current {
+  flex-shrink: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.tab-keep-current:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.tab-keep-current:not(:disabled):hover {
+  background: var(--surface);
+}
 .tabs {
   display: flex;
   min-height: 40px;

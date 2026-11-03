@@ -1308,7 +1308,25 @@ function renderWorkspace(main: HTMLElement) {
     );
     tabbar.append(tab);
   }
-  center.append(tabbar);
+  const tabsBar = el("div", "tabs-bar");
+  const closeOthers = button(
+    t("closeOtherTabs"),
+    () => {
+      if (!activeDoc) return;
+      tabs = [activeDoc];
+      selected =
+        p.documents.find((doc) => doc.id === activeDoc)?.nodeId || selected;
+      render();
+      root
+        .querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+        ?.focus();
+    },
+    "tab-keep-current",
+    t("closeOtherTabsHint"),
+  );
+  closeOthers.disabled = !activeDoc || tabs.length < 2;
+  tabsBar.append(tabbar, closeOthers);
+  center.append(tabsBar);
   const viewer = el("div", "viewer");
   center.append(viewer);
   const node = p.nodes.find((n) => n.id === selected);

@@ -127,6 +127,8 @@ const pl = {
     "JSON: nowy lub starszy format. ZIP: kopia Viewer lub eksport TIA XML z folderami. Maks. 100 MiB pliku, 250 MiB po rozpakowaniu.",
   noLegacy: "Brak kopii danych sprzed migracji.",
   openTabs: "Otwarte dokumenty",
+  closeOtherTabs: "Zamknij pozostałe",
+  closeOtherTabsHint: "Zamknij wszystkie karty poza aktualną",
   more: "Więcej",
   resetFilters: "Wyczyść wyszukiwanie",
   confirmReload:
@@ -261,6 +263,8 @@ const en: Record<keyof typeof pl, string> = {
     "JSON: current or legacy format. ZIP: Viewer backup or TIA XML export with folders. Max 100 MiB file, 250 MiB unpacked.",
   noLegacy: "No pre-migration backup.",
   openTabs: "Open documents",
+  closeOtherTabs: "Close other tabs",
+  closeOtherTabsHint: "Close all tabs except the current one",
   more: "More",
   resetFilters: "Clear search",
   confirmReload:
