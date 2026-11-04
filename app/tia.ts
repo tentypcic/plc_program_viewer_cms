@@ -492,6 +492,7 @@ function drawNetwork(
   const lineHeight = 13;
   const simpleKinds = [
     "Contact",
+    "Eq",
     "PContact",
     "NContact",
     "Coil",
@@ -561,6 +562,9 @@ function drawNetwork(
   };
   const metadata = (name: string) =>
     ["operand", "bit"].includes(name.toLowerCase());
+  const comparisonOperand = (uid: string, name: string) =>
+    /^in[12]$/i.test(name) &&
+    parts.some((p) => id(p) === uid && kind(p) === "Eq");
   const output = (uid: string, name: string) => {
     const part = parts.find((p) => id(p) === uid);
     const param =
@@ -585,7 +589,7 @@ function drawNetwork(
       return [
         id(p),
         [...names]
-          .filter((n) => !metadata(n))
+          .filter((n) => !metadata(n) && !comparisonOperand(id(p), n))
           .map((name) => ({ name, out: output(id(p), name) })),
       ];
     }),
@@ -685,30 +689,39 @@ function drawNetwork(
       )) {
         const part = parts.find((p) => id(p) === id(c));
         if (!part) continue;
-        if (["Contact", "PContact", "NContact"].includes(kind(part))) {
+        if (["Contact", "Eq", "PContact", "NContact"].includes(kind(part))) {
           for (const labelWire of wires.filter((w) =>
             all(w, "NameCon").some(
               (c) =>
-                id(c) === id(part) && metadata(c.getAttribute("Name") || ""),
+                id(c) === id(part) &&
+                (metadata(c.getAttribute("Name") || "") ||
+                  comparisonOperand(id(part), c.getAttribute("Name") || "")),
             ),
           )) {
             const value =
               accesses.get(id(all(labelWire, "IdentCon")[0] || part)) || "";
-            const bit = all(labelWire, "NameCon").some(
-              (c) => c.getAttribute("Name") === "bit",
+            const below = all(labelWire, "NameCon").some(
+              (c) =>
+                id(c) === id(part) &&
+                /^(bit|in2)$/i.test(c.getAttribute("Name") || ""),
             );
-            if (bit)
+            if (below)
               bottom = Math.max(
                 bottom,
                 26 +
                   (lineCount(value) - 1) * lineHeight +
-                  (symbols?.operand(value) ? 13 : 0),
+                  (symbols?.operand(value) || constants.has(value) ? 13 : 0),
               );
             else
               top = Math.max(
                 top,
                 14 + lineCount(value) * 13 + (symbols?.operand(value) ? 15 : 0),
               );
+          }
+          for (const pin of pins.get(id(part))!.filter((p) => !p.out)) {
+            const upstream = branchSpan(id(part), pin.name, visited);
+            top = Math.max(top, upstream.top);
+            bottom = Math.max(bottom, upstream.bottom);
           }
         } else if (kind(part) === "O") {
           const outputOffset =
@@ -901,7 +914,7 @@ function drawNetwork(
         operandWidth(label.value),
         labelWidth(symbols?.operand(label.value) || "") + 8,
       );
-      if (metadata(label.pin)) {
+      if (metadata(label.pin) || comparisonOperand(uid, label.pin)) {
         const center = simpleKinds.includes(k) ? symbolCenter : width / 2;
         left = Math.max(left, w / 2 - center);
         right = Math.max(right, center + w / 2);
@@ -969,7 +982,7 @@ function drawNetwork(
       k = kind(part),
       targets = outgoing(uid);
     if (
-      ["Contact", "PContact", "NContact", "O"].includes(k) &&
+      ["Contact", "Eq", "PContact", "NContact", "O"].includes(k) &&
       targets.length === 1
     ) {
       const t = targets[0];
@@ -977,16 +990,17 @@ function drawNetwork(
         parent: id(t),
         offset: pinRow(id(t), t.getAttribute("Name")!) * rowGap,
       });
-    } else if (["Coil", "SCoil", "RCoil"].includes(k)) {
+    } else if (coilKinds.includes(k) || k === "Move") {
       const sources = incoming(uid);
+      if (sources.length !== 1) continue;
+      const t = sources[0];
+      const sourceKind = kind(parts.find((p) => id(p) === id(t))!);
       if (
-        sources.length === 1 &&
-        !["Contact", "PContact", "NContact", "O"].includes(
-          kind(parts.find((p) => id(p) === id(sources[0]))!),
-        ) &&
-        outgoing(id(sources[0])).length === 1
+        (k === "Move"
+          ? sourceKind === "TON"
+          : !simpleKinds.includes(sourceKind) && sourceKind !== "O") &&
+        outgoing(id(t)).length === 1
       ) {
-        const t = sources[0];
         attachment.set(uid, {
           parent: id(t),
           offset: pinRow(id(t), t.getAttribute("Name")!) * rowGap,
@@ -1024,7 +1038,9 @@ function drawNetwork(
       const labels = wires
         .filter((w) =>
           all(w, "NameCon").some(
-            (c) => id(c) === uid && metadata(c.getAttribute("Name") || ""),
+            (c) => id(c) === uid &&
+              (metadata(c.getAttribute("Name") || "") ||
+                comparisonOperand(uid, c.getAttribute("Name") || "")),
           ),
         )
         .flatMap((w) =>
@@ -1035,7 +1051,11 @@ function drawNetwork(
         top: pos.y + 30 - n * lineHeight - 16,
         bottom:
           pos.y +
-          (["PContact", "NContact"].includes(k) ? 63 + n * lineHeight : 55),
+          (k === "Eq"
+            ? 82 + n * lineHeight
+            : ["PContact", "NContact"].includes(k)
+              ? 63 + n * lineHeight
+              : 55),
       };
     }
     const instance = all(part, "Instance")[0];
@@ -1209,12 +1229,22 @@ function drawNetwork(
     };
   };
   const rail = line(railX, 15, railX, height - 20, true);
+  const operandStubs: (DiagramObstacle & { uid: string })[] = [];
   const operandStub = (
     uid: string,
     name: string,
     p: { x: number; y: number; out: boolean },
   ) => {
-    const stub = line(p.x, p.y, p.x + (p.out ? 16 : -16), p.y, true);
+    const endX = p.x + (p.out ? 16 : -16);
+    const stub = line(p.x, p.y, endX, p.y, true);
+    stub.classList.add("tia-operand-stub");
+    operandStubs.push({
+      uid,
+      x: Math.min(p.x, endX) - 5,
+      y: p.y - 4,
+      width: 26,
+      height: 8,
+    });
     const type = pinType(uid, name);
     if (type && !/^(bool|void)$/i.test(type))
       stub.classList.add("tia-data-pin-stub");
@@ -1243,27 +1273,37 @@ function drawNetwork(
         const pos = positions.get(id(c));
         if (!pos) continue;
         const operand = accesses.get(id(access)) || "?";
-        if (metadata(name)) {
+        const comparison = comparisonOperand(id(c), name);
+        if (metadata(name) || comparison) {
           const uid = id(c);
           const simple = simpleKinds.includes(
             kind(parts.find((p) => id(p) === uid)!),
           );
-          const below = name.toLowerCase() === "bit";
+          const below = ["bit", "in2"].includes(name.toLowerCase());
           const addr = symbols?.operand(operand);
+          const caption =
+            addr ?? (comparison ? constants.get(operand) : undefined);
           const labelX = pos.x + (simple ? symbolCenter : boxWidth(uid) / 2);
-          const labelY = pos.y + (below ? (addr ? 79 : 66) : simple ? 30 : -10);
+          const offset = comparison
+            ? below
+              ? caption === undefined ? 69 : 82
+              : 25
+            : below
+              ? addr ? 79 : 66
+              : simple ? 30 : -10;
+          const labelY = pos.y + offset;
           linkOperand(
             text(labelX, labelY, operand, "middle", "tia-operand", below),
             id(access),
             operand,
           );
-          if (addr)
+          if (caption !== undefined)
             text(
               labelX,
               labelY - (below ? 13 : lineCount(operand) * lineHeight + 2),
-              addr,
+              caption,
               "middle",
-              "tia-address",
+              addr ? "tia-address" : "tia-constant-value",
             );
           continue;
         }
@@ -1340,17 +1380,19 @@ function drawNetwork(
     if (simpleKinds.includes(k)) {
       const x = pos.x + symbolCenter;
       const y = pos.y + 44;
+      const halfGap = k === "Eq" ? 14 : 8;
+      const halfHeight = k === "Eq" ? 14 : 10;
       add("rect", {
-        x: x - 10,
-        y: y - 10,
-        width: 20,
-        height: 20,
+        x: x - halfGap - 2,
+        y: y - halfHeight,
+        width: 2 * (halfGap + 2),
+        height: 2 * halfHeight,
         fill: "transparent",
         class: "tia-symbol-hit",
       });
       const coil = coilKinds.includes(k);
-      line(pos.x, y, x - 8, y, true);
-      line(x + 8, y, pos.x + symbolWidth, y, true);
+      line(pos.x, y, x - halfGap, y, true);
+      line(x + halfGap, y, pos.x + symbolWidth, y, true);
       if (coil) {
         add("path", {
           d: `M${x - 5} ${y - 8} Q${x - 12} ${y} ${x - 5} ${y + 8} M${x + 5} ${y - 8} Q${x + 12} ${y} ${x + 5} ${y + 8}`,
@@ -1369,6 +1411,14 @@ function drawNetwork(
             endX: end,
           });
         }
+      } else if (k === "Eq") {
+        line(x - halfGap, y - 12, x - halfGap, y + 12, true);
+        line(x + halfGap, y - 12, x + halfGap, y + 12, true);
+        text(x, y - 3, "==", "middle", "tia-instruction");
+        const sourceType = all(p, "TemplateValue")
+          .find((e) => e.getAttribute("Name") === "SrcType")
+          ?.textContent?.trim();
+        if (sourceType) text(x, y + 9, sourceType, "middle");
       } else {
         line(x - 8, y - 7, x - 8, y + 7, true);
         line(x + 8, y - 7, x + 8, y + 7, true);
@@ -1621,6 +1671,9 @@ function drawNetwork(
         height: b.height + 2 * pad,
       };
     });
+  // Keep vertical branch buses clear of the short lines to data operands.
+  for (const { uid, ...stub } of operandStubs)
+    obstacles.push({ ...stub, y: stub.y + shifts.get(uid)! });
   for (const { uid, start, endX } of tails) {
     const { x } = start;
     const y = start.y + shifts.get(uid)!;

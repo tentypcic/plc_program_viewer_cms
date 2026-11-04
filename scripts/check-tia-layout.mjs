@@ -57,7 +57,21 @@ try {
         wire('<IdentCon UId="2"/>' + pin(31, "operand")) +
         wire('<IdentCon UId="4"/>' + pin(32, "operand")),
     );
-    const xml = `<Document><SW.Blocks.FC><AttributeList><Name>LayoutSample</Name></AttributeList><ObjectList>${first}${second}</ObjectList></SW.Blocks.FC></Document>`;
+    const third = network(
+      '<Part Name="Eq" UId="40"><TemplateValue Name="SrcType" Type="Type">UInt</TemplateValue></Part>' +
+        '<Part Name="TON" UId="41"/><Part Name="Move" UId="42"/>' +
+        '<Part Name="Contact" UId="43"/><Part Name="Move" UId="44"/><Part Name="Move" UId="45"/>',
+      wire("<Powerrail/>" + pin(40, "pre") + pin(43, "in")) +
+        wire('<IdentCon UId="1"/>' + pin(40, "in1")) +
+        wire('<IdentCon UId="2"/>' + pin(40, "in2")) +
+        wire(pin(40, "out") + pin(41, "IN")) +
+        wire(pin(41, "Q") + pin(42, "en")) +
+        wire('<IdentCon UId="3"/>' + pin(43, "operand")) +
+        wire(pin(43, "out") + pin(44, "en") + pin(45, "en")) +
+        wire('<IdentCon UId="4"/>' + pin(44, "in")) +
+        wire('<IdentCon UId="1"/>' + pin(45, "in")),
+    );
+    const xml = `<Document><SW.Blocks.FC><AttributeList><Name>LayoutSample</Name></AttributeList><ObjectList>${first}${second}${third}</ObjectList></SW.Blocks.FC></Document>`;
     let networks = 0;
     for (const theme of ["light", "dark"]) {
       document.documentElement.dataset.theme = theme;
@@ -78,6 +92,18 @@ try {
           };
         };
         const contact = svg.querySelector('[data-part="21"]');
+        const comparison = svg.querySelector('[data-part="40"]');
+        if (comparison) {
+          const captions = [...svg.querySelectorAll('text[data-owner="40"]')].map(
+            (e) => e.firstChild?.textContent,
+          );
+          if (!captions.includes("==") || !captions.includes("UInt") || captions.includes("PRE"))
+            throw Error("Comparison is not rendered as a typed contact");
+          const rungY = (uid) =>
+            +svg.querySelector(`[data-part="${uid}"]`).dataset.layoutY;
+          if (rungY(40) !== rungY(41) || rungY(41) !== rungY(42))
+            throw Error("Comparison, TON and MOVE must share a rung");
+        }
         if (contact) {
           const x = +contact.dataset.layoutX,
             y = +contact.dataset.layoutY + 44;
@@ -122,8 +148,19 @@ try {
               e.getAttribute("fill")?.startsWith("var(--tia-box"),
           )
           .map(bbox);
+        const stubs = [...svg.querySelectorAll(".tia-operand-stub")].map(bbox);
         for (const path of svg.querySelectorAll("[data-route]")) {
           const points = JSON.parse(path.getAttribute("data-route"));
+          for (let i = 1; i < points.length; i++) {
+            const a = points[i - 1], b = points[i];
+            if (a.x === b.x && stubs.some((r) =>
+              a.x > r.x - 4 &&
+              a.x < r.x + r.width + 4 &&
+              Math.min(a.y, b.y) <= r.y &&
+              Math.max(a.y, b.y) >= r.y
+            ))
+              throw Error("Branch bus runs too close to an operand stub");
+          }
           for (let i = 1; i < points.length; i++)
             for (const r of obstacles) {
               const a = points[i - 1],
@@ -146,7 +183,7 @@ try {
     }
     return networks;
   });
-  assert.equal(result, 4);
+  assert.equal(result, 6);
   console.log(
     "TIA layout: mixed FB chains, long operands, pulse/OR branches and coil fan-out passed in both themes",
   );
