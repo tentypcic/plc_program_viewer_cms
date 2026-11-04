@@ -257,7 +257,7 @@ try {
     if (
       defaultOutput?.firstChild?.textContent !== "0" ||
       defaultOutput.getAttribute("role") ||
-      !openOutput.querySelector("path.tia-default-pin-stub")
+      !openOutput.querySelector("path.tia-data-pin-stub")
     )
       throw Error("Unassigned INT output shows a zero with a pin stub");
     const safeProject = structuredClone(p);

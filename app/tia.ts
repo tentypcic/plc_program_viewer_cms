@@ -842,15 +842,22 @@ function drawNetwork(
     for (const uid of group) levels.set(uid, level);
   }
   const columns = Math.max(0, ...levels.values()) + 1;
+  const pinType = (uid: string, pin: string) => {
+    const part = parts.find((p) => id(p) === uid);
+    return (
+      part &&
+      all(part, "Parameter")
+        .find((p) => p.getAttribute("Name") === pin)
+        ?.getAttribute("Type")
+        ?.trim()
+    );
+  };
   const openPinValue = (uid: string, pin: string) => {
     const part = parts.find((p) => id(p) === uid);
     const call = part && all(part, "CallInfo")[0];
     if (!call) return undefined;
     if (output(uid, pin)) {
-      const parameter = all(call, "Parameter").find(
-        (p) => p.getAttribute("Name") === pin,
-      );
-      return typeDefault(parameter?.getAttribute("Type") || "");
+      return typeDefault(pinType(uid, pin) || "");
     }
     return symbols?.defaultInput(
       call.getAttribute("Name") || "",
@@ -1194,6 +1201,16 @@ function drawNetwork(
     };
   };
   const rail = line(railX, 15, railX, height - 20, true);
+  const operandStub = (
+    uid: string,
+    name: string,
+    p: { x: number; y: number; out: boolean },
+  ) => {
+    const stub = line(p.x, p.y, p.x + (p.out ? 16 : -16), p.y, true);
+    const type = pinType(uid, name);
+    if (type && !/^(bool|void)$/i.test(type))
+      stub.classList.add("tia-data-pin-stub");
+  };
   const linkOperand = (label: Element, accessId: string, operand: string) => {
     if (!referenceLink || operand === "?" || !variables.has(accessId)) return;
     label.classList.add("tia-reference-link");
@@ -1253,7 +1270,7 @@ function drawNetwork(
             p.out ? "start" : "end",
             "tia-constant-value",
           );
-        line(p.x, p.y, p.x + (p.out ? 16 : -16), p.y, true);
+        operandStub(id(c), name, p);
         linkOperand(
           text(
             p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
@@ -1282,10 +1299,7 @@ function drawNetwork(
         const p = point(id(c), c.getAttribute("Name")!);
         if (!p) continue;
         const def = openPinValue(id(c), c.getAttribute("Name")!);
-        if (def !== undefined) {
-          const stub = line(p.x, p.y, p.x + (p.out ? 16 : -16), p.y, true);
-          stub.classList.add("tia-default-pin-stub");
-        }
+        if (def !== undefined) operandStub(id(c), c.getAttribute("Name")!, p);
         const label = text(
           p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
           p.y + 4,
@@ -1362,19 +1376,22 @@ function drawNetwork(
       continue;
     }
     const list = pins.get(id(p))!;
-    const h = boxBottom(id(p)) - boxTop;
+    const callAddress =
+      info && symbols?.block(name, info.getAttribute("BlockType") || "");
+    const titleTop = callAddress ? boxTop - 13 : boxTop;
+    const h = boxBottom(id(p)) - titleTop;
     add("rect", {
       x: pos.x,
-      y: pos.y + boxTop,
+      y: pos.y + titleTop,
       width: boxWidth(id(p)),
       height: h,
       fill: "var(--tia-box, #e1e5ed)",
     });
     add("rect", {
       x: pos.x,
-      y: pos.y + boxTop,
+      y: pos.y + titleTop,
       width: boxWidth(id(p)),
-      height: 18,
+      height: 18 + boxTop - titleTop,
       fill: safety
         ? "var(--tia-safety-title, #fff45c)"
         : "var(--tia-title, #cbd1df)",
@@ -1382,20 +1399,18 @@ function drawNetwork(
     text(
       pos.x + boxWidth(id(p)) / 2,
       pos.y + boxTop + 13,
-      name === "Sr"
-        ? "SR"
-        : name === "Add"
-          ? "ADD"
-          : name === "Move"
-            ? "MOVE"
-            : name,
+      info
+        ? '"' + name + '"'
+        : ["Sr", "Add", "Move"].includes(name)
+          ? name.toUpperCase()
+          : name,
       "middle",
       "tia-instruction",
     );
     const instance = all(p, "Instance")[0];
-    const callAddress =
-      info && symbols?.block(name, info.getAttribute("BlockType") || "");
     const instanceName = instance && symbol(instance);
+    const instanceLabel = instanceName &&
+      (instanceName.startsWith("#") ? instanceName : '"' + instanceName + '"');
     const instanceAddress =
       instanceName &&
       !instanceName.startsWith("#") &&
@@ -1403,7 +1418,7 @@ function drawNetwork(
     if (callAddress)
       text(
         pos.x + boxWidth(id(p)) / 2,
-        pos.y - 10,
+        pos.y + titleTop + 10,
         callAddress,
         "middle",
         "tia-address",
@@ -1411,16 +1426,16 @@ function drawNetwork(
     if (instanceAddress)
       text(
         pos.x + boxWidth(id(p)) / 2,
-        pos.y - (callAddress ? 33 : 15) - lineCount(instanceName || "") * 13,
+        pos.y + titleTop - 4 - lineCount(instanceLabel || "") * lineHeight,
         instanceAddress,
         "middle",
         "tia-address",
       );
-    if (instance)
+    if (instanceLabel)
       text(
         pos.x + boxWidth(id(p)) / 2,
-        pos.y - (callAddress ? 28 : 10),
-        symbol(instance),
+        pos.y + titleTop - 4,
+        instanceLabel,
         "middle",
         "tia-operand",
       );
@@ -1447,7 +1462,7 @@ function drawNetwork(
       const activate = callLink(name, info.getAttribute("BlockType") || "");
       const hit = add("rect", {
         x: pos.x,
-        y: pos.y + boxTop,
+        y: pos.y + titleTop,
         width: boxWidth(id(p)),
         height: h,
         fill: "transparent",

@@ -1907,7 +1907,7 @@ button.tia-reference-link {
   fill: var(--muted);
   font-size: 10px;
 }
-.tia-network .tia-default-pin-stub {
+.tia-network .tia-data-pin-stub {
   stroke: #ef9714;
 }
 .tia-network-tools select {
