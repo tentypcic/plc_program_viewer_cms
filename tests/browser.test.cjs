@@ -107,6 +107,8 @@ async function addNode(page, kind, name) {
       exact: true,
     })
     .click();
+  for (const label of ["Notatki", "Kod alarmu", "Co zrobić", "Sekwencja / warunki"])
+    assert.equal(await page.getByLabel(label, { exact: true }).count(), 0);
   await page.getByLabel("Nazwa", { exact: true }).fill(name);
   if (kind === "block")
     await page.getByLabel("Typ bloku", { exact: true }).selectOption("FC");
@@ -248,6 +250,19 @@ test("portable ZIP roundtrip restores local attachments into a fresh browser", a
 });
 test("duplicate, edit, trash, restore and history work through consistent dialogs", async () => {
   const { context, page } = await setup([legacy()]);
+  const more = page.getByRole("button", { name: "Więcej", exact: true });
+  const card = page.locator(".project-card").first();
+  const contextMenu = page.getByRole("menu");
+  const trigger = await more.boundingBox();
+  await more.click();
+  const popup = await contextMenu.boundingBox();
+  assert.ok(Math.abs(popup.x - trigger.x) <= trigger.width + 8);
+  await page.keyboard.press("Escape");
+  assert.ok(await more.evaluate((node) => node === document.activeElement));
+  const rect = await card.boundingBox();
+  await card.click({ button: "right", position: { x: 16, y: 16 } });
+  assert.ok(Math.abs((await contextMenu.boundingBox()).x - rect.x - 16) < 3);
+  await page.keyboard.press("Escape");
   await catalogAction(page, "Duplikuj");
   await page.locator(".project-card").nth(1).waitFor();
   assert.equal(await page.locator(".project-card").count(), 2);

@@ -414,7 +414,7 @@ kbd {
 }
 .explorer {
   flex-shrink: 0;
-  min-width: 220px;
+  width: min(220px, calc(100vw - 16px));
   max-width: 520px;
   display: flex;
   flex-direction: column;

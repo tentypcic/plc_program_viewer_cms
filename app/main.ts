@@ -377,10 +377,7 @@ function nodeForm(kind: PlcNode["kind"], node?: PlcNode) {
     description.wrap,
     parent.wrap,
     ...(kind === "block" ? [type.wrap, safety.wrap] : []),
-    notes.wrap,
-    alarm.wrap,
-    remedy.wrap,
-    sequence.wrap,
+    ...(node ? [notes.wrap, alarm.wrap, remedy.wrap, sequence.wrap] : []),
   ];
   formDialog(
     node ? t("edit") : kind === "block" ? t("addBlock") : t("addGroup"),
@@ -395,10 +392,14 @@ function nodeForm(kind: PlcNode["kind"], node?: PlcNode) {
         parentId: parent.input.value || null,
         blockType: type.input.value,
         safety: (safety.input as HTMLInputElement).checked,
-        notes: notes.input.value,
-        alarmCode: alarm.input.value,
-        remedy: remedy.input.value,
-        sequence: sequence.input.value,
+        ...(node
+          ? {
+              notes: notes.input.value,
+              alarmCode: alarm.input.value,
+              remedy: remedy.input.value,
+              sequence: sequence.input.value,
+            }
+          : {}),
       });
       if (!node) p.nodes.push(next);
       selected = next.id;
@@ -446,22 +447,29 @@ async function duplicateProject(p: Project) {
   projects = await repo.list();
   render();
 }
+let dismissMenu: (() => void) | undefined;
 function menu(
   title: string,
   items: { key: Key; action: () => void | Promise<void>; danger?: boolean }[],
-  x?: number,
-  y?: number,
+  event: MouseEvent,
 ) {
-  document.getElementById("context-menu")?.remove();
+  dismissMenu?.();
   const m = el("div", "context-menu");
   m.id = "context-menu";
   m.setAttribute("role", "menu");
   m.setAttribute("aria-label", title);
+  const listeners = new AbortController();
+  const close = () => {
+    listeners.abort();
+    m.remove();
+    dismissMenu = undefined;
+  };
+  dismissMenu = close;
   for (const item of items) {
     const b = button(
       t(item.key),
       async () => {
-        m.remove();
+        close();
         await item.action();
       },
       "menu-item" + (item.danger ? " danger-text" : ""),
@@ -470,16 +478,26 @@ function menu(
     m.append(b);
   }
   document.body.append(m);
-  m.style.left = Math.min(x ?? innerWidth - 240, innerWidth - 240) + "px";
-  m.style.top = Math.min(y ?? 80, innerHeight - m.offsetHeight - 12) + "px";
-  (m.firstElementChild as HTMLElement)?.focus();
-  const close = (e: Event) => {
-    if (!m.contains(e.target as HTMLElement)) {
-      m.remove();
-      document.removeEventListener("pointerdown", close);
-    }
-  };
-  document.addEventListener("pointerdown", close);
+  const trigger = (event.target as Element)?.closest("button, [role=treeitem]");
+  const anchor =
+    event.type === "click" && event.detail === 0
+      ? trigger?.getBoundingClientRect()
+      : undefined;
+  const x = anchor?.left ?? event.clientX;
+  const y = anchor?.bottom ?? event.clientY;
+  const above = (anchor?.top ?? y) - m.offsetHeight - 6;
+  const top =
+    y + 6 + m.offsetHeight > innerHeight - 8 && above >= 8 ? above : y + 6;
+  m.style.left = Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8)) + "px";
+  m.style.top = Math.max(8, Math.min(top, innerHeight - m.offsetHeight - 8)) + "px";
+  (m.firstElementChild as HTMLElement)?.focus({ preventScroll: true });
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!m.contains(e.target as Node)) close();
+    },
+    { signal: listeners.signal },
+  );
   m.onkeydown = (e) => {
     const buttons = [...m.querySelectorAll("button")];
     const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
@@ -489,7 +507,11 @@ function menu(
         (i + (e.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length
       ].focus();
     }
-    if (e.key === "Escape") m.remove();
+    if (e.key === "Escape") {
+      close();
+      if (trigger instanceof HTMLElement)
+        trigger.focus({ preventScroll: true });
+    }
   };
 }
 function projectActions(p: Project) {
@@ -929,7 +951,7 @@ function renderCatalog(main: HTMLElement) {
       el("span", "project-symbol", "PLC"),
       button("•••", eMenu, "icon-button", t("more")),
     );
-    function eMenu() {
+    function eMenu(event: MouseEvent) {
       menu(
         p.name,
         trash
@@ -954,6 +976,7 @@ function renderCatalog(main: HTMLElement) {
               },
             ]
           : projectActions(p),
+        event,
       );
     }
     append(
@@ -974,7 +997,7 @@ function renderCatalog(main: HTMLElement) {
     );
     card.oncontextmenu = (e) => {
       e.preventDefault();
-      eMenu();
+      eMenu(e);
     };
     cards.append(card);
   }
@@ -1220,7 +1243,7 @@ function renderWorkspace(main: HTMLElement) {
         row.oncontextmenu = (e) => {
           e.preventDefault();
           selected = n.id;
-          menu(n.name, nodeActions(n), e.clientX, e.clientY);
+          menu(n.name, nodeActions(n), e);
         };
       tree.append(row);
     }
@@ -1259,7 +1282,7 @@ function renderWorkspace(main: HTMLElement) {
     button("↓ ZIP", () => exportProject(p, true), "button small"),
     button(
       "•••",
-      () =>
+      (event) =>
         menu(p.name, [
           ...projectActions(p).filter(
             (a) => edit || ["export", "exportZip", "history"].includes(a.key),
@@ -1281,7 +1304,7 @@ function renderWorkspace(main: HTMLElement) {
                 },
               ]
             : []),
-        ]),
+        ], event),
       "icon-button",
       t("more"),
     ),

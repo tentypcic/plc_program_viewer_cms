@@ -10,7 +10,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 }
 export function button(
   label: string,
-  action: () => unknown,
+  action: (event: MouseEvent) => unknown,
   className = "button",
   title = label,
 ) {
@@ -18,8 +18,8 @@ export function button(
   b.type = "button";
   b.title = title;
   b.setAttribute("aria-label", title);
-  b.addEventListener("click", () => {
-    Promise.resolve().then(action).catch(showError);
+  b.addEventListener("click", (event) => {
+    Promise.resolve().then(() => action(event)).catch(showError);
   });
   return b;
 }
