@@ -6,7 +6,7 @@ const path = require("node:path");
 const { chromium } = require("playwright");
 const { unzipSync } = require("fflate");
 let browser, server, base;
-const prefix = "/plc_program_viewer_cms/";
+const prefix = "/tia-plc-viewer/";
 before(async () => {
   server = createServer(async (req, res) => {
     try {
@@ -658,14 +658,14 @@ test("GitHub Pages slug redirects preserve the repository root without redirect 
   await page.goto(base + "alpha/");
   await page.getByRole("heading", { name: "Alpha", exact: true }).waitFor();
   assert.ok(
-    page.url().includes("/plc_program_viewer_cms/viewer.html?slug=alpha"),
+    page.url().includes("/tia-plc-viewer/viewer.html?slug=alpha"),
   );
   await page.goto(base + "nested/unknown/");
   await page
     .getByRole("heading", { name: "Dokumentacja pod kontrolą." })
     .waitFor();
   assert.ok(
-    page.url().includes("/plc_program_viewer_cms/viewer.html?slug=unknown"),
+    page.url().includes("/tia-plc-viewer/viewer.html?slug=unknown"),
   );
   assert.equal((await getProjects(page)).length, 1);
   await context.close();

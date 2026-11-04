@@ -1,7 +1,7 @@
 # PLC Viewer for Siemens TIA Portal
 
 <p align="center"><img src="docs/screenshots/overview.jpg" alt="PLC Viewer showing the Conveyor Sorting Line project tree and two LAD networks" width="900"></p>
-<p align="center">A browser-based project viewer for Siemens TIA Portal. Export your PLC project with VCI, import one XML/SCL ZIP and browse the project tree.<br><a href="https://tentypcic.github.io/plc_program_viewer_cms/">Open the app</a> · <a href="https://tentypcic.github.io/plc_program_viewer_cms/?demo=1&amp;lang=en">Try the demo</a> · <a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a></p>
+<p align="center">A browser-based project viewer for Siemens TIA Portal. Export your PLC project with VCI, import one XML/SCL ZIP and browse the project tree.<br><a href="https://tentypcic.github.io/tia-plc-viewer/">Open the app</a> · <a href="https://tentypcic.github.io/tia-plc-viewer/?demo=1&amp;lang=en">Try the demo</a> · <a href="https://github.com/tentypcic/tia-plc-viewer/issues">Report Bug</a></p>
 
 ## About
 

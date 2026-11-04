@@ -47,8 +47,8 @@
         // Try last segment as slug
         const slug = parts[parts.length - 1];
         const base =
-          parts[0] === "plc_program_viewer_cms"
-            ? "/plc_program_viewer_cms/"
+          parts[0] === "tia-plc-viewer"
+            ? "/tia-plc-viewer/"
             : "/";
         if (!slug || /\.(html?|m?js|css)$/i.test(slug)) {
           document.getElementById("msg").textContent = "Project not found.";
