@@ -131,6 +131,12 @@ function typeDefault(dt: string): string | undefined {
         ? "0"
         : undefined;
 }
+function sliceSuffix(component: Element): string {
+  const modifier = component.getAttribute("SliceAccessModifier");
+  return modifier && /^[xbwd]\d+$/i.test(modifier)
+    ? ".%" + modifier.toUpperCase()
+    : "";
+}
 function symbol(e: Element): string {
   const constant = child(e, "Constant")
     ? all(child(e, "Constant")!, "ConstantValue")[0]
@@ -142,15 +148,22 @@ function symbol(e: Element): string {
   return (
     (e.getAttribute("Scope") === "LocalVariable" ? "#" : "") +
     all(e, "Component")
-      .map(
-        (c) =>
-          c.getAttribute("Name") +
+      .map((c, index) => {
+        const name = c.getAttribute("Name") || "";
+        const member =
+          index > 0 && /^\d/.test(name)
+            ? '"' + name.replace(/"/g, '$"') + '"'
+            : name;
+        return (
+          member +
           (c.getAttribute("AccessModifier") === "Array"
             ? `[${all(c, "ConstantValue")
                 .map((v) => v.textContent)
                 .join(",")}]`
-            : ""),
-      )
+            : "") +
+          sliceSuffix(c)
+        );
+      })
       .join(".")
   );
 }
@@ -2200,7 +2213,9 @@ export function structuredText(source: Element): string {
               .filter((c) => c.localName === "Access")
               .map(render);
             return (
-              name + (indexes.length ? "[" + indexes.join(", ") + "]" : "")
+              name +
+              (indexes.length ? "[" + indexes.join(", ") + "]" : "") +
+              sliceSuffix(c)
             );
           })
           .join(".")

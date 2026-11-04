@@ -83,6 +83,47 @@ try {
       );
     const pin = (id, name) => `<NameCon UId="${id}" Name="${name}"/>`;
     const wire = (con) => `<Wire>${con}</Wire>`;
+    const bitAccess = (id, bit) =>
+      `<Access Scope="LocalVariable" UId="${id}"><Symbol><Component Name="ClockByte" SliceAccessModifier="x${bit}"/></Symbol></Access>`;
+    const sliceXml = netXml(
+      bitAccess(10, 0) +
+        bitAccess(11, 7) +
+        '<Access Scope="LocalVariable" UId="12"><Symbol><Component Name="Flags"/><Component Name="Clock"/><Component Name="10Hz"/></Symbol></Access>' +
+        '<Part Name="Contact" UId="1"/><Part Name="Contact" UId="2"/><Part Name="Coil" UId="3"/>',
+      wire("<Powerrail/>" + pin(1, "in")) +
+        wire(pin(1, "out") + pin(2, "in")) +
+        wire(pin(2, "out") + pin(3, "in")) +
+        wire('<IdentCon UId="10"/>' + pin(1, "operand")) +
+        wire('<IdentCon UId="11"/>' + pin(2, "operand")) +
+        wire('<IdentCon UId="12"/>' + pin(3, "operand")),
+    );
+    const sliceView = tiaView(sliceXml);
+    const captions = [...sliceView.querySelectorAll("svg .tia-operand")].map(
+      (label) =>
+        [...label.querySelectorAll("tspan")]
+          .map((span) => span.textContent)
+          .join(""),
+    );
+    const sliceProject = importTia(
+      { "Program blocks/Slices.xml": sliceXml },
+      "Slices",
+    );
+    const sliceRefs = tiaReferences(sliceProject).references;
+    const sliceNode = sliceProject.documents[0].nodeId;
+    if (
+      !["#ClockByte.%X0", "#ClockByte.%X7", '#Flags.Clock."10Hz"'].every(
+        (caption) => captions.includes(caption),
+      ) ||
+      matchingReferences(sliceRefs, "#ClockByte", sliceNode).length !== 2 ||
+      matchingReferences(sliceRefs, "#ClockByte.%X7", sliceNode).length !== 1
+    )
+      throw Error("TIA byte slice labels and references");
+    const sliceSource = new DOMParser().parseFromString(
+      `<StructuredText>${bitAccess(10, 0)}</StructuredText>`,
+      "application/xml",
+    ).documentElement;
+    if (structuredText(sliceSource) !== "#ClockByte.%X0")
+      throw Error("StructuredText byte slice");
     const parallel = netXml(
       '<Part Name="Contact" UId="1"/><Part Name="Contact" UId="2"/><Part Name="O" UId="3"/><Part Name="Coil" UId="4"/>',
       wire("<Powerrail/>" + pin(1, "in") + pin(2, "in")) +
