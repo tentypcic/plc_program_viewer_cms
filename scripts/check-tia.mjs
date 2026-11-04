@@ -468,12 +468,12 @@ try {
     .waitFor();
   await page.locator(".xref-target").waitFor();
   const closeReference = async () => {
-    const dialog = page.getByRole("dialog");
+    const dialog = page.locator("dialog");
     await dialog
       .getByRole("button", { name: "Zamknij", exact: true })
       .last()
       .click();
-    await dialog.waitFor({ state: "hidden" });
+    await dialog.waitFor({ state: "detached" });
   };
   const query = page.getByLabel("Blok lub zmienna", { exact: true });
   await page
@@ -488,9 +488,17 @@ try {
     /DemoData\.Request · R · SampleCycle/,
   );
   await closeReference();
-  await page
-    .getByRole("button", { name: "Cross-reference: #observed", exact: true })
-    .press("Enter");
+  const localReference = page.getByRole("button", {
+    name: "Cross-reference: #observed",
+    exact: true,
+  });
+  await localReference.focus();
+  assert.ok(
+    await localReference.evaluate(
+      (element) => element === document.activeElement,
+    ),
+  );
+  await page.keyboard.press("Enter");
   assert.equal(await query.inputValue(), "#observed");
   assert.match(
     await page.locator(".xref-result").innerText(),
@@ -632,6 +640,17 @@ try {
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
+  );
+  await page.setViewportSize({ width: 390, height: 520 });
+  assert.ok(
+    await page.locator(".tia-network-tools").evaluate((toolbar) => {
+      const top = toolbar.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: top + 80, behavior: "instant" });
+      return (
+        window.scrollY > top + 10 &&
+        Math.abs(toolbar.getBoundingClientRect().top) < 2
+      );
+    }),
   );
 
   console.log(

@@ -1265,6 +1265,9 @@ form > .dialog-actions {
     max-width: calc(100vw - 48px);
     overflow: auto;
   }
+  .document-preview:has(> .tia-view) {
+    overflow: visible;
+  }
 }
 
 .tia-view {
