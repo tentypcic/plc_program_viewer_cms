@@ -72,9 +72,9 @@ Use the **Version Control Interface (VCI)** to export the software objects of on
 3. In the workspace editor, drag the selected PLC from **Project** to **Workspace**. For a smaller export, drag **Program blocks**, **PLC tags** and **PLC data types** separately. Confirm compilation if prompted. For a subsequent export, select **Export changes to workspace**, then **Synchronize**. [Siemens export instructions](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/synchronization-of-the-workspace-with-the-project/exporting-and-importing-objects) · [Synchronization](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/synchronization-of-the-workspace-with-the-project/synchronizing-objects)
 4. In Windows Explorer, locate the exported PLC software folders. Select them and create a ZIP, keeping the subfolders. Include the exported `.xml` files and any `.scl` sources you want to view. In PLC Viewer, choose **Import**, select the ZIP and open a block.
 
-<img src="docs/screenshots/tia-vci-workspace.png" alt="TIA Portal V20 Version Control Interface showing Main.xml and other exported program blocks in the Workspace file column" width="900">
+<img src="docs/screenshots/tia-vci-workspace.png" alt="TIA Portal VCI editor with the Project tree on the left and exported files in the Workspace pane on the right" width="763">
 
-*TIA Portal V20 Update 3 workspace with exported XML files. Source: [Siemens technical slides, slide 220](https://cache.industry.siemens.com/dl/files/848/109963848/att_1305640/v4/TIA_Portal_V20_technical_slides_EN.pdf#page=215).*
+*TIA Portal VCI editor with the Project and Workspace panes. [Siemens documentation](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/user-interface-of-the-version-control-interface/overview-of-the-workspace-editor).*
 
 Select a block to view its interface/data table and collapsible LAD networks. The block toolbar offers the original XML for download, and portable backups include it.
 

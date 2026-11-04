@@ -723,7 +723,7 @@ function vciGuide() {
   screenshot.alt = t("vciScreenshot");
   const source = el("a", "", t("vciSource"));
   source.href =
-    "https://cache.industry.siemens.com/dl/files/848/109963848/att_1305640/v4/TIA_Portal_V20_technical_slides_EN.pdf#page=215";
+    "https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/user-interface-of-the-version-control-interface/overview-of-the-workspace-editor";
   source.target = "_blank";
   source.rel = "noopener";
   body.append(steps, screenshot, source);

@@ -84,7 +84,7 @@ const pl = {
   vciImport:
     "Spakuj wyeksportowane foldery z plikami XML do ZIP, zachowując podfoldery. W PLC Viewer kliknij Importuj i wskaż ZIP.",
   vciScreenshot: "Okno VCI w TIA Portal V20 z wyeksportowanymi plikami XML",
-  vciSource: "Źródło zrzutu · Siemens, slajd 220",
+  vciSource: "Źródło zrzutu · dokumentacja Siemensa",
   helpBody:
     "Ctrl/Cmd+K: wyszukiwanie · Ctrl/Cmd+S: eksport projektu · Esc: zamknij okno. Włącz tryb edycji, aby zmieniać drzewo i dokumenty. Menu kontekstowe jest dostępne po kliknięciu prawym przyciskiem. Każdy zapis zachowuje do 20 poprzednich wersji projektu. Kopia ZIP zawiera lokalne załączniki. Linki zdalne pozostają linkami. Dane mogą zostać usunięte przy czyszczeniu przeglądarki — regularnie pobieraj kopię ZIP.",
   example: "Wczytaj przykład",
@@ -232,7 +232,7 @@ const en: Record<keyof typeof pl, string> = {
   vciImport:
     "Create a ZIP from the exported folders containing XML files and keep their subfolders. In PLC Viewer, click Import and select the ZIP.",
   vciScreenshot: "TIA Portal V20 VCI workspace showing exported XML files",
-  vciSource: "Screenshot source · Siemens, slide 220",
+  vciSource: "Screenshot source · Siemens documentation",
   helpBody:
     "Ctrl/Cmd+K: search · Ctrl/Cmd+S: export project · Esc: close dialog. Enable edit mode to change the tree and documents. Right-click for context actions. Every save keeps up to 20 prior project versions. ZIP backups include local attachments; remote links remain links. Clearing browser data can delete this library — download ZIP backups regularly.",
   example: "Load example",
