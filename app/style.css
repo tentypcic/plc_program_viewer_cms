@@ -1211,6 +1211,7 @@ form > .dialog-actions {
   }
   .document-area {
     min-height: 55dvh;
+    overflow: clip;
   }
   .viewer {
     overflow: visible;
@@ -1733,10 +1734,30 @@ form > .dialog-actions {
   border: 2px solid var(--accent);
 }
 .tia-network-tools {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 14px 0;
+  padding: 8px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.tia-reference-link {
+  cursor: pointer;
+}
+button.tia-reference-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.tia-reference-link:hover,
+.tia-reference-link:focus-visible {
+  text-decoration: underline;
 }
 .tia-data-grid {
   margin-top: 14px;

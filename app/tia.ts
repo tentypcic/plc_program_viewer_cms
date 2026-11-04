@@ -268,26 +268,19 @@ export function tiaSymbolIndex(project: Project): TiaSymbolIndex {
   return index;
 }
 type CallLink = (name: string, type: string) => (() => void) | undefined;
+type ReferenceLink = (symbol: string) => void;
 export function tiaView(
   text: string,
   lang: "pl" | "en" = "en",
   callLink?: CallLink,
   symbols?: TiaSymbolIndex,
+  referenceLink?: ReferenceLink,
 ) {
   const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
   const { root, attr, name, type, number, technology, safety } = parseTia(text);
   const wrap = html("div");
   wrap.className = "tia-view";
   wrap.append(html("h2", `${name} ${number ? `[${type}${number}]` : ""}`));
-  wrap.append(
-    html(
-      "p",
-      ui(
-        "TIA XML · documentation preview · no simulation",
-        "TIA XML · podgląd dokumentacji · bez symulacji",
-      ),
-    ),
-  );
   const constants = new Map<string, string>();
   for (const section of all(attr, "Section").filter(
     (e) => e.getAttribute("Name") === "Constant",
@@ -303,7 +296,7 @@ export function tiaView(
           v?.textContent || fallback || "",
         );
     }
-  const data = tiaDataTable(root, attr, type, name, lang);
+  const data = tiaDataTable(root, attr, type, name, lang, referenceLink);
   if (["FC", "FB", "OB"].includes(type)) {
     const details = html("details");
     details.open = true;
@@ -375,7 +368,7 @@ export function tiaView(
     };
     tools.append(fitButton);
     tools.append(zoom);
-    wrap.append(tools);
+    wrap.prepend(tools);
   }
   units.forEach((unit, index) => {
     const details = html("details");
@@ -420,7 +413,9 @@ export function tiaView(
         badge.tabIndex = 0;
         details.querySelector("summary")!.append(badge);
       }
-      details.append(drawNetwork(net, callLink, symbols, safety, constants));
+      details.append(
+        drawNetwork(net, callLink, symbols, safety, constants, referenceLink),
+      );
     } else if (all(unit, "StructuredText")[0]) {
       const pre = html("pre");
       pre.className = "code-view tia-scl";
@@ -467,16 +462,25 @@ function drawNetwork(
   symbols?: TiaSymbolIndex,
   safety = false,
   constants = new Map<string, string>(),
+  referenceLink?: ReferenceLink,
 ) {
   const parts = Array.from(all(net, "Parts")[0]?.children || []).filter((e) =>
     ["Part", "Call"].includes(e.localName),
   );
   const id = (e: Element) => e.getAttribute("UId")!;
   const kind = (e: Element) => e.getAttribute("Name") || "";
-  const accesses = new Map(
-    all(net, "Access")
-      .filter((e) => e.hasAttribute("UId"))
-      .map((e) => [id(e), symbol(e)]),
+  const accessElements = all(net, "Access").filter((e) =>
+    e.hasAttribute("UId"),
+  );
+  const accesses = new Map(accessElements.map((e) => [id(e), symbol(e)]));
+  const variables = new Set(
+    accessElements
+      .filter((e) =>
+        ["LocalVariable", "GlobalVariable"].includes(
+          e.getAttribute("Scope") || "",
+        ),
+      )
+      .map(id),
   );
   const symbolWidth = 104;
   const symbolCenter = symbolWidth / 2;
@@ -1070,7 +1074,7 @@ function drawNetwork(
   svg.style.height = "auto";
   svg.style.minWidth = "0";
   svg.setAttribute("height", String(height));
-  svg.setAttribute("role", "img");
+  svg.setAttribute("role", referenceLink ? "group" : "img");
   svg.setAttribute("aria-label", "LAD network connections");
   let owner = "";
   const wirePaths: {
@@ -1192,6 +1196,20 @@ function drawNetwork(
     };
   };
   const rail = line(railX, 15, railX, height - 20, true);
+  const linkOperand = (label: Element, accessId: string, operand: string) => {
+    if (!referenceLink || operand === "?" || !variables.has(accessId)) return;
+    label.classList.add("tia-reference-link");
+    label.setAttribute("role", "button");
+    label.setAttribute("tabindex", "0");
+    label.setAttribute("aria-label", "Cross-reference: " + operand);
+    label.addEventListener("click", () => referenceLink(operand));
+    label.addEventListener("keydown", (event) => {
+      const { key } = event as KeyboardEvent;
+      if (key !== "Enter" && key !== " ") return;
+      event.preventDefault();
+      referenceLink(operand);
+    });
+  };
   for (const w of wires) {
     const con = all(w, "NameCon");
     const access = all(w, "IdentCon")[0];
@@ -1201,17 +1219,21 @@ function drawNetwork(
         const name = c.getAttribute("Name")!;
         const pos = positions.get(id(c));
         if (!pos) continue;
+        const operand = accesses.get(id(access)) || "?";
         if (metadata(name)) {
           const uid = id(c);
           const simple = simpleKinds.includes(
             kind(parts.find((p) => id(p) === uid)!),
           );
-          const operand = accesses.get(id(access)) || "?";
           const below = name.toLowerCase() === "bit";
           const addr = symbols?.operand(operand);
           const labelX = pos.x + (simple ? symbolCenter : boxWidth(uid) / 2);
           const labelY = pos.y + (below ? (addr ? 79 : 66) : simple ? 30 : -10);
-          text(labelX, labelY, operand, "middle", "tia-operand", below);
+          linkOperand(
+            text(labelX, labelY, operand, "middle", "tia-operand", below),
+            id(access),
+            operand,
+          );
           if (addr)
             text(
               labelX,
@@ -1224,7 +1246,7 @@ function drawNetwork(
         }
         const p = point(id(c), name);
         if (!p) continue;
-        const constantValue = constants.get(accesses.get(id(access)) || "");
+        const constantValue = constants.get(operand);
         if (constantValue !== undefined)
           text(
             p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
@@ -1234,14 +1256,18 @@ function drawNetwork(
             "tia-constant-value",
           );
         line(p.x, p.y, p.x + (p.out ? 16 : -16), p.y, true);
-        text(
-          p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
-          p.y + 4,
-          accesses.get(id(access)) || "?",
-          p.out ? "start" : "end",
-          "tia-operand",
+        linkOperand(
+          text(
+            p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
+            p.y + 4,
+            operand,
+            p.out ? "start" : "end",
+            "tia-operand",
+          ),
+          id(access),
+          operand,
         );
-        const addr = symbols?.operand(accesses.get(id(access)) || "");
+        const addr = symbols?.operand(operand);
         if (addr)
           text(
             p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
@@ -1916,6 +1942,7 @@ function tiaDataTable(
   type: string,
   name: string,
   lang: "pl" | "en",
+  referenceLink?: ReferenceLink,
 ) {
   const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
   const interfaceBlock = ["FB", "FC", "OB"].includes(type);
@@ -2097,10 +2124,36 @@ function tiaDataTable(
       const cell = html("td");
       cell.style.paddingLeft = `${depth * 18 + 6}px`;
       cell.title = row.path;
+      const operand =
+        row.group || !row.path || !row.datatype
+          ? ""
+          : interfaceBlock
+            ? "#" + row.path
+            : type === "DB"
+              ? name + "." + row.path
+              : type === "TAGS"
+                ? row.path
+                : "";
+      const link =
+        referenceLink && operand ? html("button", row.name) : undefined;
+      if (link) {
+        link.type = "button";
+        link.className = "tia-reference-link";
+        link.title = "Cross-reference: " + operand;
+        link.onclick = () => referenceLink!(operand);
+      }
       if (row.children || row.load) {
-        const toggle = html("button", `${row.open ? "▾" : "▸"} ${row.name}`);
+        const marker = row.open ? "▾" : "▸";
+        const toggle = html("button", link ? marker : `${marker} ${row.name}`);
         toggle.className = "tia-data-toggle";
         toggle.setAttribute("aria-expanded", String(!!row.open));
+        if (link)
+          toggle.setAttribute(
+            "aria-label",
+            (row.open ? ui("Collapse", "Zwiń") : ui("Expand", "Rozwiń")) +
+              " " +
+              row.name,
+          );
         toggle.onclick = () => {
           if (row.load) {
             row.children = row.load();
@@ -2110,10 +2163,11 @@ function tiaDataTable(
           render();
         };
         cell.append(toggle);
+        if (link) cell.append(" ", link);
       } else {
         const icon = html("span", "▪");
         icon.className = "tia-member-icon";
-        cell.append(icon, document.createTextNode(row.name));
+        cell.append(icon, link || document.createTextNode(row.name));
       }
       tr.append(cell, html("td", row.datatype));
       const start = html("td", row.start);

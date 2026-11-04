@@ -467,6 +467,41 @@ try {
     .filter({ hasText: "SampleCycle [OB1]" })
     .waitFor();
   await page.locator(".xref-target").waitFor();
+  const closeReference = async () => {
+    const dialog = page.getByRole("dialog");
+    await dialog
+      .getByRole("button", { name: "Zamknij", exact: true })
+      .last()
+      .click();
+    await dialog.waitFor({ state: "hidden" });
+  };
+  const query = page.getByLabel("Blok lub zmienna", { exact: true });
+  await page
+    .getByRole("button", {
+      name: "Cross-reference: DemoData.Request",
+      exact: true,
+    })
+    .click();
+  assert.equal(await query.inputValue(), "DemoData.Request");
+  assert.match(
+    await page.locator(".xref-result").innerText(),
+    /DemoData\.Request · R · SampleCycle/,
+  );
+  await closeReference();
+  await page
+    .getByRole("button", { name: "Cross-reference: #observed", exact: true })
+    .press("Enter");
+  assert.equal(await query.inputValue(), "#observed");
+  assert.match(
+    await page.locator(".xref-result").innerText(),
+    /#observed · W · SampleCycle/,
+  );
+  await closeReference();
+  await page
+    .locator('.tia-data-grid [data-path="observed"] button.tia-reference-link')
+    .click();
+  assert.equal(await query.inputValue(), "#observed");
+  await closeReference();
   await page
     .getByRole("button", { name: "Cross-reference", exact: true })
     .click();
@@ -474,6 +509,29 @@ try {
   assert.equal(await page.locator(".xref-result").count(), 1);
   await page.locator(".xref-result").click();
   await page.getByRole("tab", { name: "DemoControl.xml", exact: true }).click();
+  assert.ok(
+    await page
+      .locator(".tia-view")
+      .evaluate((view) =>
+        view.firstElementChild?.classList.contains("tia-network-tools"),
+      ),
+  );
+  assert.ok(
+    await page.locator(".viewer").evaluate((viewer) => {
+      const tools = viewer.querySelector(".tia-network-tools");
+      viewer.style.maxHeight = "240px";
+      viewer.scrollTop = 250;
+      const pinned =
+        viewer.scrollTop > 150 &&
+        Math.abs(
+          tools.getBoundingClientRect().top -
+            viewer.getBoundingClientRect().top,
+        ) < 2;
+      viewer.style.removeProperty("max-height");
+      viewer.scrollTop = 0;
+      return pinned;
+    }),
+  );
   await page
     .getByRole("button", { name: "Zwiń wszystkie sieci", exact: true })
     .click();

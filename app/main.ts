@@ -1399,14 +1399,15 @@ function openDoc(id: string) {
   }
   render();
 }
-function crossReference(node: PlcNode) {
+function crossReference(node: PlcNode, operand?: string) {
   const p = current!;
   const index = tiaReferences(p);
   const doc = p.documents.find(
     (d) => d.nodeId === node.id && /\.xml$/i.test(d.name) && d.text,
   );
   let initial = node.name.replace(/\s*\[[^\]]+\]$/, "");
-  if (doc?.text) {
+  if (operand !== undefined) initial = operand;
+  else if (doc?.text) {
     try {
       initial = parseTia(doc.text).name;
     } catch {}
@@ -1723,6 +1724,10 @@ async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
               return target ? () => openDoc(target.id) : undefined;
             },
             tiaSymbolIndex(p),
+            (operand) => {
+              const node = p.nodes.find((n) => n.id === doc.nodeId);
+              if (node) crossReference(node, operand);
+            },
           ),
         );
         return;
