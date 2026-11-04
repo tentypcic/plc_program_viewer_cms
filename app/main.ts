@@ -37,7 +37,13 @@ import {
   type Node as PlcNode,
   type Doc,
 } from "./model";
-import { readImport, exportZip, copyImport } from "./archive";
+import {
+  readImport,
+  exportZip,
+  copyImport,
+  exportTiaZip,
+  isTiaSource,
+} from "./archive";
 import { exportLegacy, importData } from "./legacy";
 import { tokenize } from "./analysis/lexer";
 import { compareProjects } from "./analysis/compare";
@@ -417,8 +423,14 @@ function pathName(p: Project, id: string) {
   }
   return parts.join(" / ");
 }
-async function exportProject(p: Project, zip = false) {
-  if (zip) download(filename(p.name) + ".zip", await exportZip([p], repo));
+async function exportProject(
+  p: Project,
+  format: "json" | "sources" | "backup" = "json",
+) {
+  if (format === "sources")
+    download(filename(p.name) + "-sources.zip", exportTiaZip(p));
+  else if (format === "backup")
+    download(filename(p.name) + "-backup.zip", await exportZip([p], repo));
   else {
     download(
       filename(p.name) + ".json",
@@ -543,7 +555,10 @@ function projectActions(p: Project) {
     },
     { key: "duplicate" as Key, action: () => duplicateProject(p) },
     { key: "export" as Key, action: () => exportProject(p) },
-    { key: "exportZip" as Key, action: () => exportProject(p, true) },
+    ...(p.documents.some(isTiaSource)
+      ? [{ key: "exportZip" as Key, action: () => exportProject(p, "sources") }]
+      : []),
+    { key: "backup" as Key, action: () => exportProject(p, "backup") },
     {
       key: "legacy" as Key,
       action: () => {
@@ -1300,16 +1315,22 @@ function renderWorkspace(main: HTMLElement) {
   };
   aside.append(tree);
   const footer = el("div", "explorer-footer");
+  const hasSources = p.documents.some(isTiaSource);
   append(
     footer,
     button("↓ JSON", () => exportProject(p), "button small"),
-    button("↓ ZIP", () => exportProject(p, true), "button small"),
+    button(
+      "↓ " + (hasSources ? "XML/SCL ZIP" : t("backup")),
+      () => exportProject(p, hasSources ? "sources" : "backup"),
+      "button small",
+    ),
     button(
       "•••",
       (event) =>
         menu(p.name, [
           ...projectActions(p).filter(
-            (a) => edit || ["export", "exportZip", "history"].includes(a.key),
+            (a) =>
+              edit || ["export", "exportZip", "backup", "history"].includes(a.key),
           ),
           { key: "compare", action: compareImport },
           ...(edit

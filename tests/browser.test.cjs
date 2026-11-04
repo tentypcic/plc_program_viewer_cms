@@ -4,6 +4,7 @@ const { createServer } = require("node:http");
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");
 const { chromium } = require("playwright");
+const { unzipSync } = require("fflate");
 let browser, server, base;
 const prefix = "/plc_program_viewer_cms/";
 before(async () => {
@@ -201,7 +202,7 @@ test("migration preserves original raw JSON, maps old PID, blocks HTML, renders 
   await page.locator("canvas").waitFor();
   await page.waitForFunction(() => document.querySelector("canvas")?.width > 0);
   const dl = page.waitForEvent("download");
-  await page.getByRole("button", { name: "↓ ZIP", exact: true }).click();
+  await page.getByRole("button", { name: "↓ Kopia ZIP", exact: true }).click();
   assert.match((await dl).suggestedFilename(), /\.zip$/);
   assert.equal(errors.length, 0);
   await context.close();
@@ -223,8 +224,18 @@ test("portable ZIP roundtrip restores local attachments into a fresh browser", a
     buffer: Buffer.from("REGION Test\nEND_REGION"),
   });
   await page.locator(".code-view").waitFor();
+  const [sourceDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "↓ XML/SCL ZIP", exact: true }).click(),
+  ]);
+  const sourceZip = unzipSync(new Uint8Array(await readFile(await sourceDownload.path())));
+  const sourcePath = Object.keys(sourceZip).find((entry) => entry.endsWith("/Program.scl"));
+  assert.ok(sourcePath);
+  assert.equal(Buffer.from(sourceZip[sourcePath]).toString("utf8"), "REGION Test\nEND_REGION");
+  assert.ok(!sourceZip["manifest.json"]);
+  await page.locator(".explorer-footer").getByRole("button", { name: "Więcej" }).click();
   const dl = page.waitForEvent("download");
-  await page.getByRole("button", { name: "↓ ZIP", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Kopia ZIP", exact: true }).click();
   const downloaded = await dl;
   const file = {
     name: downloaded.suggestedFilename(),
@@ -246,6 +257,39 @@ test("portable ZIP roundtrip restores local attachments into a fresh browser", a
     /END_REGION/,
   );
   await second.context.close();
+  await context.close();
+});
+test("TIA source ZIP keeps the project tree and opens again in Viewer", async () => {
+  const { context, page } = await setup();
+  await page.goto(base + "?demo=1");
+  const button = page.getByRole("button", { name: "↓ XML/SCL ZIP", exact: true });
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    button.click(),
+  ]);
+  const file = await download.path();
+  const zip = unzipSync(new Uint8Array(await readFile(file)));
+  assert.deepEqual(
+    Object.keys(zip).filter((entry) => !entry.endsWith("/")).sort(),
+    [
+      "PLC data types/UDT_LineInfo.xml",
+      "PLC tags/LineTags.xml",
+      "Program blocks/Conveyor/DB_ConveyorInstance.xml",
+      "Program blocks/Conveyor/FB_Conveyor.xml",
+      "Program blocks/DB_Line.xml",
+      "Program blocks/Main.xml",
+    ],
+  );
+  await page.getByRole("button", { name: "PLC Viewer", exact: true }).click();
+  await importFile(page, {
+    name: "TIA-sources.zip",
+    mimeType: "application/zip",
+    buffer: await readFile(file),
+  });
+  await page.getByRole("button", { name: "TIA-sources", exact: true }).click();
+  await page.getByRole("treeitem").filter({ hasText: "Main [OB1]" }).click();
+  await page.locator('[data-block-call="FB_Conveyor"]').dblclick();
+  await page.getByRole("heading", { name: "FB_Conveyor [FB7]" }).waitFor();
   await context.close();
 });
 test("duplicate, edit, trash, restore and history work through consistent dialogs", async () => {
@@ -391,7 +435,7 @@ test("local PDF indexes text and ZIP preserves original PDF in another browser",
     .filter({ hasText: "Treść PDF jest dostępna" })
     .waitFor();
   const dl = page.waitForEvent("download");
-  await page.getByRole("button", { name: "↓ ZIP", exact: true }).click();
+  await page.getByRole("button", { name: "↓ Kopia ZIP", exact: true }).click();
   const downloaded = await dl;
   const file = {
     name: downloaded.suggestedFilename(),

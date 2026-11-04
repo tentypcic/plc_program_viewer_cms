@@ -53,6 +53,8 @@ npm run test:tia
 
 ## 💾 Data and Recovery
 
+Use **XML/SCL ZIP** in an open project to download its local XML and SCL files in their project folders. Use **ZIP backup** to preserve the full Viewer project, including its metadata and local attachments.
+
 Before upgrading, export `projects.json` from the old viewer. Migration reads `ppv.projects` or `menuData`, preserves original localStorage keys, and stores a raw backup and migration marker transactionally.
 
 Use **ZIP backup** for portable copies: JSON contains structure/text, not local PDF bytes. History is local and is removed with site data. Different domains, including GitHub Pages and Sites, have independent databases; move your documentation with an exported backup.

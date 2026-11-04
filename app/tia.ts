@@ -70,18 +70,18 @@ export function parseSclHeader(text: string): {
           : "OB",
   };
 }
-export function importTia(files: Record<string, string>, name: string) {
+export function importTia(
+  files: Record<string, string>,
+  name: string,
+  directories: string[] = [],
+) {
   const p = newProject(name);
   const folders = new Map(p.nodes.map((n) => [n.name, n.id]));
-  for (const [path, text] of Object.entries(files)) {
-    const parsed = /\.scl$/i.test(path)
-      ? { ...parseSclHeader(text), number: "", safety: false }
-      : parseTia(text);
-    const pieces = path.split("/");
-    pieces.pop();
+  const ensureFolder = (pieces: string[]) => {
     let parent: string | null = null,
       key = "";
     for (const piece of pieces) {
+      if (!piece || piece === ".") continue;
       key += (key ? "/" : "") + piece;
       if (!folders.has(key)) {
         const n = newNode(piece, parent, "group");
@@ -90,6 +90,14 @@ export function importTia(files: Record<string, string>, name: string) {
       }
       parent = folders.get(key)!;
     }
+    return parent;
+  };
+  for (const directory of directories) ensureFolder(directory.split("/"));
+  for (const [path, text] of Object.entries(files)) {
+    const parsed = /\.scl$/i.test(path)
+      ? { ...parseSclHeader(text), number: "", safety: false }
+      : parseTia(text);
+    let parent = ensureFolder(path.split("/").slice(0, -1));
     if (!parent)
       parent = p.nodes.find(
         (n) =>

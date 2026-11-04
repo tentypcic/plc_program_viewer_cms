@@ -4,6 +4,8 @@ import {
   validateBundle,
   validateProject,
   duplicate,
+  type Doc,
+  type Node,
   type Project,
 } from "./model";
 import { importData } from "./legacy";
@@ -12,6 +14,77 @@ import { importTia } from "./tia";
 import type { Repository, Asset } from "./db";
 export const MAX_ARCHIVE = 100 * 1024 * 1024;
 const MAX_UNPACKED = 250 * 1024 * 1024;
+export const isTiaSource = (doc: Doc) =>
+  !doc.url && doc.text !== undefined && /\.(xml|scl)$/i.test(doc.name);
+
+function archiveName(name: string) {
+  const safe = name
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+    .trim()
+    .replace(/[. ]+$/, "");
+  return /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i.test(safe)
+    ? "_" + safe
+    : safe || "_";
+}
+
+export function exportTiaZip(project: Project) {
+  const sources = project.documents.filter(isTiaSource);
+  if (!sources.length) throw Error("No local XML/SCL files to export");
+  const files: Record<string, Uint8Array> = Object.create(null);
+  const usedPaths = new Set<string>();
+  const nextSuffix = new Map<string, number>();
+  const uniquePath = (folder: string, name: string, extension = "") => {
+    const stem = folder + archiveName(name);
+    const key = (stem + extension).toLowerCase();
+    let suffix = nextSuffix.get(key) ?? 1;
+    let path = stem + extension;
+    while (usedPaths.has(path.toLowerCase()))
+      path = `${stem} (${++suffix})${extension}`;
+    nextSuffix.set(key, suffix);
+    usedPaths.add(path.toLowerCase());
+    return path;
+  };
+  const nodes = new Map(project.nodes.map((node) => [node.id, node]));
+  const folders = new Map<string, string>();
+  const folderPath = (node: Node): string => {
+    const cached = folders.get(node.id);
+    if (cached !== undefined) return cached;
+    const parent = node.parentId ? folderPath(nodes.get(node.parentId)!) : "";
+    if (node.kind !== "group") return parent;
+    const path = uniquePath(parent, node.name) + "/";
+    files[path] = new Uint8Array(0);
+    folders.set(node.id, path);
+    return path;
+  };
+  for (const node of project.nodes)
+    if (node.kind === "group") folderPath(node);
+  let total = 0;
+  for (const doc of sources) {
+    const extension = doc.name.slice(-4);
+    // Source text is stored decoded. Match the declaration to the ZIP bytes.
+    const text =
+      extension.toLowerCase() === ".xml"
+        ? doc.text!.replace(
+            /^(<\?xml\s[^?]*?\bencoding\s*=\s*)(["'])(?!utf-8\2)[^"']+\2/i,
+            "$1$2UTF-8$2",
+          )
+        : doc.text!;
+    const bytes = strToU8(text);
+    total += bytes.length;
+    if (total > MAX_UNPACKED) throw Error("ZIP exceeds 250 MiB unpacked");
+    const path = uniquePath(
+      folderPath(nodes.get(doc.nodeId)!),
+      doc.name.slice(0, -4),
+      extension,
+    );
+    files[path] = bytes;
+  }
+  if (Object.keys(files).length > 20001) throw Error("ZIP exceeds 20,001 entries");
+  const data = zipSync(files);
+  if (data.length > MAX_ARCHIVE) throw Error("ZIP exceeds 100 MiB");
+  return new Blob([data as Uint8Array<ArrayBuffer>], { type: "application/zip" });
+}
+
 export async function exportZip(
   projects: Project[],
   repo: Pick<Repository, "asset">,
@@ -77,7 +150,13 @@ export async function readImport(
       }
       if (!Object.keys(xml).length) throw Error("No TIA XML/SCL files");
       return {
-        projects: [importTia(xml, file.name.replace(/\.zip$/i, ""))],
+        projects: [
+          importTia(
+            xml,
+            file.name.replace(/\.zip$/i, ""),
+            Object.keys(files).filter((path) => path.endsWith("/")),
+          ),
+        ],
         assets: [],
       };
     }
