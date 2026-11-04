@@ -710,12 +710,35 @@ async function compareImport() {
   const other = (await readImport(file)).projects[0];
   if (other) compareDialog(current, other);
 }
+function vciGuide() {
+  const body = el("div", "dialog-body vci-guide");
+  const steps = el("ol");
+  for (const key of ["vciWorkspace", "vciFormat", "vciExport", "vciImport"] as const)
+    steps.append(el("li", "", t(key)));
+  const screenshot = el("img");
+  screenshot.src = new URL(
+    "../docs/screenshots/tia-vci-workspace.png",
+    import.meta.url,
+  ).href;
+  screenshot.alt = t("vciScreenshot");
+  const source = el("a", "", t("vciSource"));
+  source.href =
+    "https://cache.industry.siemens.com/dl/files/848/109963848/att_1305640/v4/TIA_Portal_V20_technical_slides_EN.pdf#page=215";
+  source.target = "_blank";
+  source.rel = "noopener";
+  body.append(steps, screenshot, source);
+  modal(t("vciTitle"), body);
+}
 function help() {
   const body = el("div", "dialog-body");
   body.append(
     el("p", "prose", t("helpBody")),
     el("p", "muted", t("remoteWarning")),
     el("p", "muted", t("codeHelp")),
+    button(t("vciGuide"), () => {
+      d.close();
+      vciGuide();
+    }),
     button(t("legacyBackup"), async () => {
       const backup = await repo.meta<{
         raw: string | null;
@@ -898,6 +921,7 @@ function renderCatalog(main: HTMLElement) {
     append(
       tools,
       button(t("example"), openExample),
+      button(t("vciGuide"), vciGuide),
       button("↥ " + t("import"), importFile),
       button("↓ " + t("backup"), async () =>
         download("plc-viewer-backup.zip", await exportZip(projects, repo)),

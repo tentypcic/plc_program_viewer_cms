@@ -837,6 +837,18 @@ kbd {
   background: #10283c77;
   backdrop-filter: blur(3px);
 }
+.vci-guide ol {
+  margin: 0;
+  padding-inline-start: 1.5em;
+}
+.vci-guide li + li {
+  margin-top: 8px;
+}
+.vci-guide img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
 .dialog-head {
   display: flex;
   align-items: center;

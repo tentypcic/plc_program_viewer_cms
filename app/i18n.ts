@@ -73,6 +73,18 @@ const pl = {
   theme: "Zmień motyw",
   help: "Pomoc",
   helpTitle: "Twoja lokalna biblioteka PLC",
+  vciGuide: "Instrukcja VCI",
+  vciTitle: "Eksport XML z TIA Portal przez VCI",
+  vciWorkspace:
+    "W widoku projektu rozwiń Version control interface i wybierz Add new workspace. W Configure workspace wskaż pusty folder lokalny.",
+  vciFormat:
+    "W Options → Settings → Version Control Interface → Export wybierz XML (SIMATIC ML) dla typów, które mają wybór formatu. Od V20 Update 3 sprawdź też Configure workspace → Export Format.",
+  vciExport:
+    "Przeciągnij wybrany PLC z Project do Workspace. Możesz też osobno przeciągnąć Program blocks, PLC tags i PLC data types. Przy kolejnym eksporcie wybierz Export changes to workspace, a potem Synchronize.",
+  vciImport:
+    "Spakuj wyeksportowane foldery z plikami XML do ZIP, zachowując podfoldery. W PLC Viewer kliknij Importuj i wskaż ZIP.",
+  vciScreenshot: "Okno VCI w TIA Portal V20 z wyeksportowanymi plikami XML",
+  vciSource: "Źródło zrzutu · Siemens, slajd 220",
   helpBody:
     "Ctrl/Cmd+K: wyszukiwanie · Ctrl/Cmd+S: eksport projektu · Esc: zamknij okno. Włącz tryb edycji, aby zmieniać drzewo i dokumenty. Menu kontekstowe jest dostępne po kliknięciu prawym przyciskiem. Każdy zapis zachowuje do 20 poprzednich wersji projektu. Kopia ZIP zawiera lokalne załączniki. Linki zdalne pozostają linkami. Dane mogą zostać usunięte przy czyszczeniu przeglądarki — regularnie pobieraj kopię ZIP.",
   example: "Wczytaj przykład",
@@ -209,6 +221,18 @@ const en: Record<keyof typeof pl, string> = {
   theme: "Change theme",
   help: "Help",
   helpTitle: "Your local PLC library",
+  vciGuide: "VCI guide",
+  vciTitle: "Export XML from TIA Portal via VCI",
+  vciWorkspace:
+    "In Project view, expand Version control interface and choose Add new workspace. In Configure workspace, select an empty local folder.",
+  vciFormat:
+    "In Options → Settings → Version Control Interface → Export, choose XML (SIMATIC ML) for object types that offer a choice. In V20 Update 3 or later, also check Configure workspace → Export Format.",
+  vciExport:
+    "Drag the selected PLC from Project to Workspace. You can also drag Program blocks, PLC tags and PLC data types separately. For a subsequent export, choose Export changes to workspace, then Synchronize.",
+  vciImport:
+    "Create a ZIP from the exported folders containing XML files and keep their subfolders. In PLC Viewer, click Import and select the ZIP.",
+  vciScreenshot: "TIA Portal V20 VCI workspace showing exported XML files",
+  vciSource: "Screenshot source · Siemens, slide 220",
   helpBody:
     "Ctrl/Cmd+K: search · Ctrl/Cmd+S: export project · Esc: close dialog. Enable edit mode to change the tree and documents. Right-click for context actions. Every save keeps up to 20 prior project versions. ZIP backups include local attachments; remote links remain links. Clearing browser data can delete this library — download ZIP backups regularly.",
   example: "Load example",
