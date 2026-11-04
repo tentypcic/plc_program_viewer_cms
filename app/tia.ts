@@ -843,16 +843,19 @@ function drawNetwork(
   }
   const columns = Math.max(0, ...levels.values()) + 1;
   const openPinValue = (uid: string, pin: string) => {
-    if (output(uid, pin)) return undefined;
     const part = parts.find((p) => id(p) === uid);
     const call = part && all(part, "CallInfo")[0];
-    return (
-      call &&
-      symbols?.defaultInput(
-        call.getAttribute("Name") || "",
-        call.getAttribute("BlockType") || "",
-        pin,
-      )
+    if (!call) return undefined;
+    if (output(uid, pin)) {
+      const parameter = all(call, "Parameter").find(
+        (p) => p.getAttribute("Name") === pin,
+      );
+      return typeDefault(parameter?.getAttribute("Type") || "");
+    }
+    return symbols?.defaultInput(
+      call.getAttribute("Name") || "",
+      call.getAttribute("BlockType") || "",
+      pin,
     );
   };
   const operands = new Map<string, { pin: string; value: string }[]>();
@@ -865,7 +868,7 @@ function drawNetwork(
       const pin = connector.getAttribute("Name")!;
       const value = access
         ? accesses.get(id(access)) || "?"
-        : openPinValue(uid, pin) || "○";
+        : openPinValue(uid, pin) ?? "○";
       const labels = operands.get(uid) || [];
       labels.push({ pin, value });
       operands.set(uid, labels);
@@ -1272,13 +1275,17 @@ function drawNetwork(
             "tia-address",
           );
       }
-    // Open connectors have no assigned value; do not invent a live value.
+    // Open connectors can show a default, but do not have an assigned operand.
     if (all(w, "OpenCon").length)
       for (const c of con) {
         owner = id(c);
         const p = point(id(c), c.getAttribute("Name")!);
         if (!p) continue;
         const def = openPinValue(id(c), c.getAttribute("Name")!);
+        if (def !== undefined) {
+          const stub = line(p.x, p.y, p.x + (p.out ? 16 : -16), p.y, true);
+          stub.classList.add("tia-default-pin-stub");
+        }
         const label = text(
           p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
           p.y + 4,
@@ -1288,7 +1295,9 @@ function drawNetwork(
         );
         if (def !== undefined) {
           const t = document.createElementNS(svg.namespaceURI, "title");
-          t.textContent = "Default from target interface; pin is not assigned";
+          t.textContent = p.out
+            ? "Type default; output is not assigned"
+            : "Default from target interface; pin is not assigned";
           label.append(t);
         }
       }

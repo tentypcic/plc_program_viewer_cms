@@ -1431,6 +1431,24 @@ function crossReference(node: PlcNode, operand?: string) {
   body.append(search.wrap, hint, results);
   const actions = el("div", "dialog-actions");
   const dialog = modal("Cross-reference", body, actions);
+  const onBackdrop = (event: MouseEvent) => {
+    if (event.target !== dialog) return false;
+    const { left, top, right, bottom } = dialog.getBoundingClientRect();
+    return (
+      event.clientX < left ||
+      event.clientX >= right ||
+      event.clientY < top ||
+      event.clientY >= bottom
+    );
+  };
+  let startedOnBackdrop = false;
+  dialog.addEventListener("pointerdown", (event) => {
+    startedOnBackdrop = onBackdrop(event);
+  });
+  dialog.addEventListener("click", (event) => {
+    if (startedOnBackdrop && onBackdrop(event)) dialog.close();
+    startedOnBackdrop = false;
+  });
   actions.append(button(t("close"), () => dialog.close()));
   const show = () => {
     results.replaceChildren();

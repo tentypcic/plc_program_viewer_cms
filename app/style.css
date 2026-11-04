@@ -1905,6 +1905,10 @@ button.tia-reference-link {
 }
 .tia-network text.tia-default-pin {
   fill: var(--muted);
+  font-size: 10px;
+}
+.tia-network .tia-default-pin-stub {
+  stroke: #ef9714;
 }
 .tia-network-tools select {
   padding: 4px 8px;

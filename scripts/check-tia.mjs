@@ -247,6 +247,19 @@ try {
         ?.textContent.startsWith("True")
     )
       throw Error("Open pin default from declaration");
+    const openOutput = tiaView(
+      files["Program blocks/SampleCycle.xml"]
+        .replace('Name="MotorOn" Section="Output" Type="Bool"', 'Name="StopID" Section="Output" Type="Int"')
+        .replace('<IdentCon UId="2"/>', '<OpenCon UId="20"/>')
+        .replace('<NameCon UId="10" Name="MotorOn"/>', '<NameCon UId="10" Name="StopID"/>'),
+    );
+    const defaultOutput = openOutput.querySelector(".tia-default-pin");
+    if (
+      defaultOutput?.firstChild?.textContent !== "0" ||
+      defaultOutput.getAttribute("role") ||
+      !openOutput.querySelector("path.tia-default-pin-stub")
+    )
+      throw Error("Unassigned INT output shows a zero with a pin stub");
     const safeProject = structuredClone(p);
     safeProject.documents.find((d) => d.name === "DemoData.xml").text =
       safeProject.documents
@@ -503,7 +516,15 @@ try {
     await page.locator(".xref-result").innerText(),
     /DemoData\.Request · R · SampleCycle/,
   );
-  await closeReference();
+  const referenceDialog = page.locator("dialog");
+  const queryBox = await query.boundingBox();
+  await page.mouse.move(queryBox.x + 10, queryBox.y + queryBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(5, 5);
+  await page.mouse.up();
+  assert.ok(await referenceDialog.isVisible());
+  await page.mouse.click(5, 5);
+  await referenceDialog.waitFor({ state: "detached" });
   const localReference = page.getByRole("button", {
     name: "Cross-reference: #observed",
     exact: true,
