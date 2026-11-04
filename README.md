@@ -63,9 +63,20 @@ Use **ZIP backup** for portable copies: JSON contains structure/text, not local 
 
 The E2E suite targets the production build under `/plc_program_viewer_cms/`. Chromium checks passed locally, including creating and reopening projects, PDF/ZIP roundtrips, tabs, themes and tree virtualization. Other browsers and actual large PDF collections need separate checks.
 
-## TIA XML import
+## Export XML from TIA Portal via VCI
 
-Choose **Import** and select a ZIP containing Openness XML files in folders such as `Program blocks`, `PLC tags` and `PLC data types`. Import creates a separate local project; existing projects remain unchanged in copy mode. Select a block to view its interface/data table and collapsible LAD networks. Download the original XML from the block toolbar. Portable backups also include it.
+Use the **Version Control Interface (VCI)** to export the software objects of one PLC to a local folder. PLC Viewer reads the exported files in a ZIP.
+
+1. In the TIA Portal **Project view**, expand **Version control interface** and double-click **Add new workspace**. Open the workspace, choose **Configure workspace** and point it to an empty local folder. [Siemens workspace setup](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/creating-and-configuring-a-workspace/configuring-workspaces)
+2. Under **Options → Settings → Version Control Interface → Export**, choose XML for the object types that offer a choice, such as SCL blocks, DBs and PLC data types. Choose the XML format used by Openness (SIMATIC ML). In V20 Update 3 or later, check **Configure workspace → Export Format** for workspace-specific settings. [Siemens export format settings](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/settings-for-the-version-control-interface/setting-the-export-format/changing-the-export-format)
+3. In the workspace editor, drag the selected PLC from **Project** to **Workspace**. For a smaller export, drag **Program blocks**, **PLC tags** and **PLC data types** separately. Confirm compilation if prompted. For a subsequent export, select **Export changes to workspace**, then **Synchronize**. [Siemens export instructions](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/synchronization-of-the-workspace-with-the-project/exporting-and-importing-objects) · [Synchronization](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/synchronization-of-the-workspace-with-the-project/synchronizing-objects)
+4. In Windows Explorer, locate the exported PLC software folders. Select them and create a ZIP, keeping the subfolders. Include the exported `.xml` files and any `.scl` sources you want to view. In PLC Viewer, choose **Import**, select the ZIP and open a block.
+
+<img src="docs/screenshots/tia-vci-workspace.png" alt="TIA Portal V20 Version Control Interface showing Main.xml and other exported program blocks in the Workspace file column" width="900">
+
+*TIA Portal V20 Update 3 workspace with exported XML files. Source: [Siemens technical slides, slide 220](https://cache.industry.siemens.com/dl/files/848/109963848/att_1305640/v4/TIA_Portal_V20_technical_slides_EN.pdf#page=215).*
+
+Select a block to view its interface/data table and collapsible LAD networks. The block toolbar offers the original XML for download, and portable backups include it.
 
 The user-supplied reference exports were verified locally, including a larger mixed project with 312 documents and 720 rendered LAD networks. Geometry checks found no text overlaps, clipping, wire/body collisions or unmarked wire crossings in that larger sample. It is not published in this repository. Tests in the repository use an independently authored synthetic project. `npm run test:tia` verifies ZIP parsing, symbols, arrays, constants, interfaces, tags, project-tree interaction, reopening, themes, mobile overflow and complex diagram geometry in both themes. See [TIA preview scope](docs/TIA_XML.md) for limitations.
 
