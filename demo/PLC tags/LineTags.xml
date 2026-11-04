@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<Document>
+  <Engineering version="V18"/>
+  <SW.Tags.PlcTagTable>
+    <AttributeList>
+      <Name>LineTags</Name>
+      <Number/>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5"/>
+      </Interface>
+    </AttributeList>
+    <ObjectList>
+      <SW.Tags.PlcTag>
+        <AttributeList>
+          <Name>MotorCommand</Name>
+          <DataTypeName>Bool</DataTypeName>
+          <LogicalAddress>%M20.0</LogicalAddress>
+        </AttributeList>
+      </SW.Tags.PlcTag>
+    </ObjectList>
+  </SW.Tags.PlcTagTable>
+</Document>

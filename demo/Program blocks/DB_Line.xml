@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<Document>
+  <Engineering version="V18"/>
+  <SW.Blocks.GlobalDB>
+    <AttributeList>
+      <Name>DB_Line</Name>
+      <Number>4</Number>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+          <Section Name="Static">
+            <Member Name="Request" Datatype="Bool">
+              <StartValue>false</StartValue>
+            </Member>
+            <Member Name="Samples" Datatype="Array[1..3] of Real"/>
+            <Member Name="Info" Datatype="&quot;UDT_LineInfo&quot;">
+              <Sections>
+                <Section Name="None">
+                  <Member Name="Serial" Datatype="DInt"/>
+                </Section>
+              </Sections>
+            </Member>
+          </Section>
+        </Sections>
+      </Interface>
+    </AttributeList>
+    <ObjectList/>
+  </SW.Blocks.GlobalDB>
+</Document>

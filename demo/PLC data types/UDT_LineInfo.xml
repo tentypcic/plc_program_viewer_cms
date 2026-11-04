@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<Document>
+  <Engineering version="V18"/>
+  <SW.Types.PlcStruct>
+    <AttributeList>
+      <Name>UDT_LineInfo</Name>
+      <Number/>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+          <Section Name="None">
+            <Member Name="Serial" Datatype="DInt"/>
+          </Section>
+        </Sections>
+      </Interface>
+    </AttributeList>
+    <ObjectList/>
+  </SW.Types.PlcStruct>
+</Document>

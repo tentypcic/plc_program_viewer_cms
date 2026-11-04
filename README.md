@@ -1,13 +1,19 @@
-# PLC Viewer
+# PLC Viewer for Siemens TIA Portal
 
-<p align="center"><img src="docs/screenshots/overview.jpg" alt="PLC Viewer project library" width="900"></p>
-<p align="center">Local PLC documentation, built with <strong>TypeScript, Vite, IndexedDB and PDF.js</strong>.<br><a href="https://tentypcic.github.io/plc_program_viewer_cms/">Open the app</a> · <a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a></p>
+<p align="center"><img src="docs/screenshots/overview.jpg" alt="PLC Viewer showing the Conveyor Sorting Line project tree and two LAD networks" width="900"></p>
+<p align="center">Browse Siemens TIA Portal exports in your browser. Explore project trees, LAD networks, block interfaces and cross-references.<br><a href="https://tentypcic.github.io/plc_program_viewer_cms/">Open the app</a> · <a href="https://tentypcic.github.io/plc_program_viewer_cms/?demo=1&amp;lang=en">Try the demo</a> · <a href="https://github.com/tentypcic/plc_program_viewer_cms/issues">Report Bug</a></p>
 
 ## 🧠 About The Project
 
-**PLC Viewer** develops PLC Programme Viewer CMS into a local library for Siemens TIA Portal documentation. Organize blocks and groups, read PDF/SCL, search documents and keep portable ZIP backups. The interface supports Polish and English.
+**PLC Viewer** is a browser-based viewer for Siemens TIA Portal Openness exports and related PLC documentation. Organize blocks and groups, read PDF/SCL, search documents and keep portable ZIP backups. The interface supports Polish and English.
 
-No backend, accounts or project uploads. User documentation stays in browser IndexedDB. The version 2 modernization is now included in `main`.
+No backend, accounts or project uploads. User documentation stays in browser IndexedDB.
+
+## Demo
+
+**Conveyor Sorting Line** is a synthetic example with an OB, an FB and its instance DB, a global DB, a UDT and a PLC tag table. **Try the demo** opens `Main [OB1]` directly. Double-click `FB_Conveyor` to follow the call, or click `#CyclePermit` to find its read and write references.
+
+The [demo XML files](demo) are authored for this viewer. They illustrate the format and have not been compiled in TIA Portal.
 
 ## 🛠 Features
 

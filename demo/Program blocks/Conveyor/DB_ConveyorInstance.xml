@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<Document>
+  <Engineering version="V18"/>
+  <SW.Blocks.InstanceDB>
+    <AttributeList>
+      <Name>DB_ConveyorInstance</Name>
+      <Number>7</Number>
+      <InstanceOfName>FB_Conveyor</InstanceOfName>
+      <InstanceOfType>FB</InstanceOfType>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+          <Section Name="Input">
+            <Member Name="RunRequest" Datatype="Bool"/>
+          </Section>
+          <Section Name="Output">
+            <Member Name="MotorOn" Datatype="Bool"/>
+          </Section>
+        </Sections>
+      </Interface>
+    </AttributeList>
+  </SW.Blocks.InstanceDB>
+</Document>

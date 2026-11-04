@@ -6,6 +6,7 @@ import {
   matchingReferences,
   parseTia,
   tiaSymbolIndex,
+  importTia,
 } from "./tia";
 import {
   el,
@@ -254,6 +255,50 @@ async function openProject(id: string, nodeId?: string) {
   history.replaceState(null, "", url);
   remember();
   render();
+}
+async function openExample() {
+  if (pending) {
+    notify(t("unsaved"), true);
+    return;
+  }
+  const id = "3bf70ac3-a88d-4bf3-9461-2255fe67f9e6";
+  let project = await repo.get(id);
+  let example = project;
+  if (!example) {
+    const files = import.meta.glob<string>("../demo/**/*.xml", {
+      query: "?raw",
+      import: "default",
+    });
+    const entries = await Promise.all(
+      Object.entries(files).map(async ([path, load]) => [
+        path.slice("../demo/".length),
+        await load(),
+      ]),
+    );
+    example = importTia(Object.fromEntries(entries), "Conveyor Sorting Line");
+    example.id = id;
+    example.description =
+      "Synthetic TIA Portal example · LAD, block interfaces and cross-references.";
+  }
+  if (!project || project.deletedAt) {
+    delete example.deletedAt;
+    try {
+      await repo.save(example, project?.revision ?? null);
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== "CONFLICT") throw error;
+    }
+    project = await repo.get(id);
+  }
+  if (!project || project.deletedAt) throw Error(t("selectProject"));
+  await openProject(id);
+  const main = project.documents.find((doc) => doc.name === "Main.xml");
+  if (main) {
+    const conveyor = project.nodes.find(
+      (node) => node.kind === "group" && node.name === "Conveyor",
+    );
+    if (conveyor) expanded.add(conveyor.id);
+    openDoc(main.id);
+  }
 }
 function back() {
   if (pending) {
@@ -664,14 +709,8 @@ function help() {
       );
     }),
     button(t("example"), async () => {
-      const response = await fetch(new URL("projects.json", location.href));
-      if (!response.ok) throw Error(String(response.status));
-      const values = importData(await response.json());
-      await repo.writeMany(
-        values.map((project) => ({ project, expected: null })),
-      );
       d.close();
-      await refresh();
+      await openExample();
     }),
   );
   const d = modal(t("helpTitle"), body);
@@ -836,6 +875,7 @@ function renderCatalog(main: HTMLElement) {
   } else
     append(
       tools,
+      button(t("example"), openExample),
       button("↥ " + t("import"), importFile),
       button("↓ " + t("backup"), async () =>
         download("plc-viewer-backup.zip", await exportZip(projects, repo)),
@@ -1865,6 +1905,14 @@ async function boot() {
     const params = new URLSearchParams(location.search);
     const pid = params.get("pid");
     const slug = params.get("slug");
+    if (params.get("demo") === "1") {
+      if (params.get("lang") === "en") {
+        lang = "en";
+        t = translator(lang);
+      }
+      await openExample();
+      return;
+    }
     if (!pid && !slug && params.has("project")) {
       const token = params.get("project")!;
       let data: unknown;
