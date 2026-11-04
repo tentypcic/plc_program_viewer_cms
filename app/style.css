@@ -637,18 +637,31 @@ kbd {
   padding: 24px 28px 18px;
   border-bottom: 1px solid var(--line);
 }
+.tia-viewer-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
+}
+.node-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+}
 .node-title-line {
   display: flex;
   gap: 12px;
   align-items: center;
+  min-width: 0;
 }
 .node-title-line h2 {
   font-size: 20px;
   letter-spacing: -0.4px;
   overflow-wrap: anywhere;
-}
-.node-title-line .button {
-  margin-left: auto;
 }
 .type-badge {
   font-size: 10px;
@@ -724,8 +737,20 @@ kbd {
   border-bottom: 1px solid var(--line);
   font-size: 11px;
 }
-.document-toolbar > span:first-child {
-  margin-right: auto;
+.node-toolbar .document-toolbar {
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  margin-left: auto;
+}
+.document-name {
+  max-width: min(260px, 48vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.document-size {
+  white-space: nowrap;
 }
 .document-preview {
   background: var(--bg);
@@ -1225,11 +1250,11 @@ form > .dialog-actions {
   .node-title-line h2 {
     font-size: 17px;
   }
-  .document-toolbar {
-    padding: 10px 15px;
+  .node-toolbar {
+    padding: 8px 12px;
   }
-  .document-toolbar > span:first-child {
-    flex-basis: 100%;
+  .node-toolbar .document-toolbar {
+    margin-left: 0;
   }
   .empty-document {
     padding: 40px 20px;
@@ -1746,6 +1771,14 @@ form > .dialog-actions {
   padding: 8px 0;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
+}
+.tia-viewer-heading .tia-network-tools {
+  position: static;
+  padding: 8px clamp(12px, 2vw, 20px);
+}
+.tia-member-comment {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .tia-reference-link {
   cursor: pointer;

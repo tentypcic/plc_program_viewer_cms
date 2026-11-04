@@ -59,7 +59,7 @@ The E2E suite targets the production build under `/plc_program_viewer_cms/`. Chr
 
 ## TIA XML import
 
-Choose **Import** and select a ZIP containing Openness XML files in folders such as `Program blocks`, `PLC tags` and `PLC data types`. Import creates a separate local project; existing projects remain unchanged in copy mode. Select a block to view its interface/data table and collapsible LAD networks. The original XML remains available in the document and portable backups.
+Choose **Import** and select a ZIP containing Openness XML files in folders such as `Program blocks`, `PLC tags` and `PLC data types`. Import creates a separate local project; existing projects remain unchanged in copy mode. Select a block to view its interface/data table and collapsible LAD networks. Download the original XML from the block toolbar. Portable backups also include it.
 
 The user-supplied reference exports were verified locally, including a larger mixed project with 312 documents and 720 rendered LAD networks. Geometry checks found no text overlaps, clipping, wire/body collisions or unmarked wire crossings in that larger sample. It is not published in this repository. Tests in the repository use an independently authored synthetic project. `npm run test:tia` verifies ZIP parsing, symbols, arrays, constants, interfaces, tags, project-tree interaction, reopening, themes, mobile overflow and complex diagram geometry in both themes. See [TIA preview scope](docs/TIA_XML.md) for limitations.
 

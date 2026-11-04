@@ -18,7 +18,7 @@ The supplied V18 reference was verified locally: eight objects, five wired netwo
 
 This is a documentation preview, not a TIA runtime, compiler or equivalent editor. It has been validated against the supplied V18 export, not all Siemens versions or instruction libraries. The layout is computed rather than copied from TIA coordinates.
 
-Complex branching, junctions, GRAPH, FBD and vendor instructions need further implementation and reference exports. Basic negated contacts, N contacts, SET/RESET coils and StructuredText token reconstruction are supported; this is not full SCL semantic analysis. Networks with unrecognized instructions carry the approximation marker; unsupported network source languages point to original XML. Do not assume a generic or branched diagram reproduces all execution semantics. UDT declarations are displayed; there is no cross-file type resolver or hardware-symbol resolver.
+Complex branching, junctions, GRAPH, FBD and vendor instructions need further implementation and reference exports. Basic negated contacts, N contacts, SET/RESET coils and StructuredText token reconstruction are supported; this is not full SCL semantic analysis. Networks with unrecognized instructions carry the approximation marker; unsupported network source languages point to the XML download. Do not assume a generic or branched diagram reproduces all execution semantics. UDT declarations are displayed; there is no cross-file type resolver or hardware-symbol resolver.
 
 DB/UDT tables show explicitly exported `StartValue` or `DefaultValue`. When absent, basic Bool, string and numeric type defaults are shown in muted text with a tooltip; these are not live values. Unsupported type defaults remain empty. Retain shows the exported state or an em dash when unspecified. Nested members expand/collapse, and one-dimensional array previews lazily show up to 200 elements. Unconnected pins do not display live timer or numeric values.
 
@@ -39,7 +39,7 @@ Use **Cross-reference** in a block header to find calls, instance references and
 
 This index covers imported XML networks only, not PDF, SCL text, hardware references or indirect/runtime accesses. No results means no matches in that available subset, not proof that a variable is unused. Results are limited to 500 displayed entries; invalid XML files are counted as skipped.
 
-**Expand all networks** and **Collapse all networks** affect only the current block's network panels. Interface tables and original XML panels retain their state.
+**Expand all networks** and **Collapse all networks** affect only the current block's network panels. Interface tables retain their state.
 
 ## Larger mixed exports
 

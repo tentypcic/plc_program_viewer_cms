@@ -433,8 +433,8 @@ export function tiaView(
           html(
             "p",
             ui(
-              "This network language is not rendered. See original XML.",
-              "Ten język sieci nie jest wyświetlany graficznie. Otwórz źródłowy XML.",
+              "This network language is not rendered. Download the XML to see the source.",
+              "Ten język sieci nie jest wyświetlany graficznie. Pobierz plik XML, aby zobaczyć źródło.",
             ),
           ),
         );
@@ -449,11 +449,6 @@ export function tiaView(
     }
     wrap.append(details);
   });
-  const source = html("details");
-  source.append(html("summary", ui("Original XML", "Źródłowy XML")));
-  const pre = html("pre", text);
-  source.append(pre);
-  wrap.append(source);
   return wrap;
 }
 function drawNetwork(
@@ -1946,6 +1941,7 @@ function tiaDataTable(
 ) {
   const ui = (en: string, pl: string) => (lang === "pl" ? pl : en);
   const interfaceBlock = ["FB", "FC", "OB"].includes(type);
+  const showComment = interfaceBlock || type === "DB" || type === "UDT";
   const host = html("div");
   host.className = "tia-data-grid";
   host.append(html("h3", name));
@@ -1969,9 +1965,9 @@ function tiaDataTable(
           ui("Visible", "Widoczne"),
           "Setpoint",
           ui("Supervision", "Nadzór"),
-          ui("Comment", "Komentarz"),
         ]
       : []),
+    ...(showComment ? [ui("Comment", "Komentarz")] : []),
   ];
   for (const label of columns) header.append(html("th", label));
   head.append(header);
@@ -2218,7 +2214,11 @@ function tiaDataTable(
           } else if (!row.group) td.textContent = "—";
           tr.append(td);
         }
-        tr.append(html("td", row.comment || ""));
+      }
+      if (showComment) {
+        const comment = html("td", row.comment || "");
+        comment.className = "tia-member-comment";
+        tr.append(comment);
       }
       body.append(tr);
       if (row.open) for (const c of row.children || []) add(c, depth + 1);

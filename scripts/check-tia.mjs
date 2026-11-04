@@ -323,7 +323,14 @@ try {
       throw Error("Call address label");
     document.body.replaceChildren();
     for (const text of Object.values(files))
-      document.body.append(tiaView(text));
+      document.body.append(
+        tiaView(
+          text.replace(
+            '<Member Name="Serial" Datatype="DInt"/>',
+            '<Member Name="Serial" Datatype="DInt"><Comment><MultiLanguageText Lang="pl-PL">Numer seryjny</MultiLanguageText><MultiLanguageText Lang="en-US">Serial number</MultiLanguageText></Comment></Member>',
+          ),
+        ),
+      );
     const db = [...document.querySelectorAll(".tia-data-grid")].find(
       (e) => e.querySelector("h3")?.textContent === "DemoData",
     );
@@ -333,7 +340,11 @@ try {
       );
     if (
       !findRow("Info.Serial") ||
-      !db.querySelector("th:last-child").textContent.includes("Retain")
+      ![...db.querySelectorAll("th")].some(
+        (th) => th.textContent === "Retain",
+      ) ||
+      db.querySelector("th:last-child").textContent !== "Comment" ||
+      findRow("Info.Serial").lastElementChild.textContent !== "Serial number"
     )
       throw Error("DB tree columns");
     findRow("Info").querySelector("button").click();
@@ -351,7 +362,12 @@ try {
     const udt = [...document.querySelectorAll(".tia-data-grid")].find(
       (e) => e.querySelector("h3")?.textContent === "SampleInfo",
     );
-    if (udt.querySelector("th:last-child").textContent !== "Default value")
+    if (
+      udt.querySelectorAll("th")[3].textContent !== "Default value" ||
+      udt.querySelector("th:last-child").textContent !== "Comment" ||
+      udt.querySelector('[data-path="Serial"]').lastElementChild.textContent !==
+        "Serial number"
+    )
       throw Error("UDT columns");
     const tags = [...document.querySelectorAll(".tia-data-grid")].find(
       (e) => e.querySelector("h3")?.textContent === "DemoTags",
@@ -517,16 +533,34 @@ try {
   assert.equal(await page.locator(".xref-result").count(), 1);
   await page.locator(".xref-result").click();
   await page.getByRole("tab", { name: "DemoControl.xml", exact: true }).click();
-  assert.ok(
-    await page
-      .locator(".tia-view")
-      .evaluate((view) =>
-        view.firstElementChild?.classList.contains("tia-network-tools"),
-      ),
+  const heading = page.locator(".tia-viewer-heading");
+  await heading.locator(".tia-network-tools").waitFor();
+  assert.equal(
+    await heading.locator(".node-toolbar .document-name").innerText(),
+    "DemoControl.xml",
+  );
+  assert.equal(
+    await heading
+      .locator(".node-toolbar")
+      .getByRole("button", { name: "Cross-reference", exact: true })
+      .count(),
+    1,
+  );
+  assert.equal(
+    await page.getByText("Źródłowy XML", { exact: true }).count(),
+    0,
+  );
+  const [xmlDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    heading.getByRole("button", { name: "Pobierz", exact: true }).click(),
+  ]);
+  assert.equal(
+    readFileSync(await xmlDownload.path(), "utf8"),
+    files["Program blocks/DemoControl.xml"],
   );
   assert.ok(
     await page.locator(".viewer").evaluate((viewer) => {
-      const tools = viewer.querySelector(".tia-network-tools");
+      const tools = viewer.querySelector(".tia-viewer-heading");
       viewer.style.maxHeight = "240px";
       viewer.scrollTop = 250;
       const pinned =
@@ -643,7 +677,7 @@ try {
   );
   await page.setViewportSize({ width: 390, height: 520 });
   assert.ok(
-    await page.locator(".tia-network-tools").evaluate((toolbar) => {
+    await page.locator(".tia-viewer-heading").evaluate((toolbar) => {
       const top = toolbar.getBoundingClientRect().top + window.scrollY;
       window.scrollTo({ top: top + 80, behavior: "instant" });
       return (

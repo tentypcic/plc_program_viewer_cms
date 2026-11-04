@@ -1330,19 +1330,20 @@ function renderWorkspace(main: HTMLElement) {
   const viewer = el("div", "viewer");
   center.append(viewer);
   const node = p.nodes.find((n) => n.id === selected);
-  if (node) renderNodeHeader(viewer, node);
+  const doc = p.documents.find((d) => d.id === activeDoc);
+  const heading = el("div", "viewer-heading");
+  viewer.append(heading);
+  if (node) renderNodeHeader(viewer, heading, node, doc);
   const content = el("div", "document-content");
   content.id = "document-content";
   viewer.append(content);
-  if (activeDoc) {
-    const doc = p.documents.find((d) => d.id === activeDoc);
-    if (doc)
-      void renderDocument(content, doc, ++contentEpoch).catch((e) => {
-        content.replaceChildren(
-          el("p", "error-note", t("pdfError")),
-          el("p", "muted", (e as Error).message),
-        );
-      });
+  if (doc) {
+    void renderDocument(content, heading, doc, ++contentEpoch).catch((e) => {
+      content.replaceChildren(
+        el("p", "error-note", t("pdfError")),
+        el("p", "muted", (e as Error).message),
+      );
+    });
   } else {
     const empty = el("div", "empty-document");
     append(
@@ -1501,8 +1502,14 @@ function crossReference(node: PlcNode, operand?: string) {
   search.input.select();
   search.input.focus();
 }
-function renderNodeHeader(host: HTMLElement, n: PlcNode) {
+function renderNodeHeader(
+  host: HTMLElement,
+  heading: HTMLElement,
+  n: PlcNode,
+  doc?: Doc,
+) {
   const header = el("div", "node-header");
+  const bar = el("div", "node-toolbar");
   const line = el("div", "node-title-line");
   append(
     line,
@@ -1512,11 +1519,16 @@ function renderNodeHeader(host: HTMLElement, n: PlcNode) {
       ? [button(t("edit"), () => nodeForm(n.kind, n), "button small")]
       : []),
   );
+  bar.append(line);
+  const actions = doc
+    ? renderDocumentToolbar(doc)
+    : el("div", "document-toolbar");
   if (n.kind === "block")
-    line.append(
+    actions.append(
       button("Cross-reference", () => crossReference(n), "button small"),
     );
-  header.append(line);
+  if (actions.childElementCount) bar.append(actions);
+  heading.append(bar);
   if (n.description) header.append(el("p", "muted", n.description));
   const docs = el("div", "doc-list");
   const nodeDocs = current!.documents.filter((d) => d.nodeId === n.id);
@@ -1553,7 +1565,7 @@ function renderNodeHeader(host: HTMLElement, n: PlcNode) {
         append(details, el("strong", "", t(key)), el("p", "prose", value));
     header.append(details);
   }
-  host.append(header);
+  if (header.childElementCount) host.append(header);
 }
 async function attach(n: PlcNode) {
   const files = await pick(".pdf,.scl,.txt,.csv,.xml,.awl,.st,.md,.vbs", true);
@@ -1622,13 +1634,17 @@ function textForm(n: PlcNode, doc?: Doc) {
     await commit(next);
   });
 }
-async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
+function renderDocumentToolbar(doc: Doc) {
   const p = current!;
   const toolbar = el("div", "document-toolbar");
   append(
     toolbar,
-    el("span", "muted", doc.name),
-    el("span", "muted", doc.url ? "URL" : Math.ceil(doc.size / 1024) + " KiB"),
+    el("span", "muted document-name", doc.name),
+    el(
+      "span",
+      "muted document-size",
+      doc.url ? "URL" : Math.ceil(doc.size / 1024) + " KiB",
+    ),
     button(
       t("download"),
       async () => {
@@ -1686,7 +1702,15 @@ async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
         "button small danger-text",
       ),
     );
-  host.append(toolbar);
+  return toolbar;
+}
+async function renderDocument(
+  host: HTMLElement,
+  heading: HTMLElement,
+  doc: Doc,
+  epoch: number,
+) {
+  const p = current!;
   const content = el("div", "document-preview");
   host.append(content);
   if (doc.mime === "application/pdf") {
@@ -1715,21 +1739,23 @@ async function renderDocument(host: HTMLElement, doc: Doc, epoch: number) {
       /<SW\.(Blocks|Types|Tags|TechnologicalObjects)\./.test(text)
     ) {
       try {
-        content.append(
-          tiaView(
-            text,
-            lang,
-            (name, type) => {
-              const target = resolveTiaCall(p, name, type);
-              return target ? () => openDoc(target.id) : undefined;
-            },
-            tiaSymbolIndex(p),
-            (operand) => {
-              const node = p.nodes.find((n) => n.id === doc.nodeId);
-              if (node) crossReference(node, operand);
-            },
-          ),
+        const view = tiaView(
+          text,
+          lang,
+          (name, type) => {
+            const target = resolveTiaCall(p, name, type);
+            return target ? () => openDoc(target.id) : undefined;
+          },
+          tiaSymbolIndex(p),
+          (operand) => {
+            const node = p.nodes.find((n) => n.id === doc.nodeId);
+            if (node) crossReference(node, operand);
+          },
         );
+        const controls = view.querySelector(".tia-network-tools");
+        if (controls) heading.append(controls);
+        heading.classList.add("tia-viewer-heading");
+        content.append(view);
         return;
       } catch (error) {
         content.append(el("p", "muted", String(error)));
