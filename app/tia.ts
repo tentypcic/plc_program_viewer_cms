@@ -465,33 +465,65 @@ function drawNetwork(
       .filter((e) => e.hasAttribute("UId"))
       .map((e) => [id(e), symbol(e)]),
   );
-  // Use the same wrapping for placement and SVG text. A character-count
-  // estimate missed early breaks at dots and under-reserved long operands.
+  const symbolWidth = 104;
+  const symbolCenter = symbolWidth / 2;
+  const railX = 30;
+  const pinLabelOffset = 20;
+  const lineHeight = 13;
+  const simpleKinds = [
+    "Contact",
+    "PContact",
+    "NContact",
+    "Coil",
+    "SCoil",
+    "RCoil",
+  ];
+  const coilKinds = ["Coil", "SCoil", "RCoil"];
+  const font = document.createElement("canvas").getContext("2d")!;
+  font.font = "11px Arial, sans-serif";
+  const labelWidth = (value: string) => font.measureText(value).width;
+  // Prefer member, word and camel-case boundaries. Each caption line
+  // is measured using the same font and size as the SVG.
+  const wrappedOperands = new Map<string, string[]>();
   const operandLines = (value: string) => {
+    const cached = wrappedOperands.get(value);
+    if (cached) return cached;
     const lines: string[] = [];
     let rest = value;
-    while (rest.length > 38 && lines.length < 2) {
-      let split = Math.max(
-        rest.lastIndexOf(".", 38),
-        rest.lastIndexOf(" ", 38),
-      );
-      split = split < 12 ? 38 : split + 1;
+    while (labelWidth(rest) > 166 && lines.length < 7) {
+      let split = 1;
+      while (split < rest.length && labelWidth(rest.slice(0, split + 1)) <= 166)
+        split++;
+      for (let i = split; i > split / 2; i--) {
+        if (
+          /[._ -]/.test(rest[i - 1]) ||
+          (/\p{Ll}/u.test(rest[i - 1]) && /\p{Lu}/u.test(rest[i] || ""))
+        ) {
+          split = i;
+          break;
+        }
+      }
+      if (rest.length - split < 5 && split > 8) split -= 5;
       lines.push(rest.slice(0, split));
       rest = rest.slice(split);
     }
-    lines.push(
-      rest.length > 45 ? rest.slice(0, 22) + "…" + rest.slice(-20) : rest,
-    );
+    if (labelWidth(rest) > 166) {
+      let end = 1;
+      while (
+        end < rest.length &&
+        labelWidth(rest.slice(0, end + 1) + "…") <= 166
+      )
+        end++;
+      rest = rest.slice(0, end) + "…";
+    }
+    lines.push(rest);
+    wrappedOperands.set(value, lines);
     return lines;
   };
   const lineCount = (value: string) => operandLines(value).length;
-  const rowGap = [...accesses.values()].some((s) => s.length > 38)
-    ? 44
-    : [...accesses.values()].some((s) => symbols?.operand(s))
-      ? 32
-      : [...accesses.values()].some((s) => constants.has(s))
-        ? 32
-        : 24;
+  const operandWidth = (value: string) =>
+    Math.max(...operandLines(value).map(labelWidth)) + 10;
+  const rowGap = 20;
   const wires = all(net, "Wire");
   const defaults: Record<string, string[]> = {
     Contact: ["in", "out"],
@@ -587,14 +619,14 @@ function drawNetwork(
         if (i)
           offset += Math.max(
             rowGap,
-            previousLines * 13 + 20,
+            previousLines * lineHeight + 7,
             source.branch
-              ? source.lines * 13 + 30
-              : lineCount(source.label) * 13 +
+              ? source.lines * lineHeight + 24
+              : lineCount(source.label) * lineHeight +
                   (symbols?.operand(source.label) || constants.has(source.label)
-                    ? 20
-                    : 7),
-            previousPulse ? 65 : 0,
+                    ? 15
+                    : 5),
+            previousPulse && source.branch ? 54 : 0,
           );
         if (kind(part) === "Sr" && pin.name === "r1")
           offset = Math.max(offset, 3 * rowGap);
@@ -646,7 +678,12 @@ function drawNetwork(
               (c) => c.getAttribute("Name") === "bit",
             );
             if (bit)
-              bottom = Math.max(bottom, 24 + (lineCount(value) - 1) * 13);
+              bottom = Math.max(
+                bottom,
+                26 +
+                  (lineCount(value) - 1) * lineHeight +
+                  (symbols?.operand(value) ? 13 : 0),
+              );
             else
               top = Math.max(
                 top,
@@ -678,9 +715,15 @@ function drawNetwork(
           const before = branchSpan(id(part), side[i - 1].name),
             after = branchSpan(id(part), side[i].name);
           const offsets = pinOffsets.get(id(part))!;
+          const beforeBottom =
+            kind(part) !== "O" &&
+            sourceForPin(id(part), side[i - 1].name).branch &&
+            !sourceForPin(id(part), side[i].name).branch
+              ? 0
+              : before.bottom;
           const current = Math.max(
             offsets.get(side[i].name)!,
-            previous + Math.max(rowGap, before.bottom + after.top + 14),
+            previous + Math.max(rowGap, beforeBottom + after.top + 8),
           );
           if (current !== offsets.get(side[i].name)) changed = true;
           offsets.set(side[i].name, current);
@@ -689,26 +732,9 @@ function drawNetwork(
       }
     if (!changed) break;
   }
-  const roomy =
-    parts.some((p) =>
-      all(p, "Parameter").some(
-        (e) => (e.getAttribute("Name") || "").length > 16,
-      ),
-    ) || [...accesses.values()].some((s) => s.length > 30);
   const boxWidth = (uid: string) => {
     const p = parts.find((p) => id(p) === uid)!;
-    if (
-      [
-        "Contact",
-        "PContact",
-        "NContact",
-        "Coil",
-        "SCoil",
-        "RCoil",
-        "O",
-      ].includes(kind(p))
-    )
-      return 150;
+    if (simpleKinds.includes(kind(p)) || kind(p) === "O") return symbolWidth;
     const list = pins.get(uid)!;
     const left = Math.max(
       0,
@@ -720,7 +746,7 @@ function drawNetwork(
     );
     const title = all(p, "CallInfo")[0]?.getAttribute("Name") || kind(p);
     return Math.max(
-      roomy ? 340 : 150,
+      158,
       (left + right) * 7.3 + 24,
       Math.min(38, title.length) * 8 + 20,
     );
@@ -746,81 +772,6 @@ function drawNetwork(
             ),
           );
     }
-  const columns = Math.max(0, ...levels.values()) + 1;
-  const columnX: number[] = [roomy ? 370 : 300];
-  for (let level = 0; level < columns; level++) {
-    const group = parts.filter((p) => levels.get(id(p)) === level);
-    const simpleOnly = group.every((p) =>
-      [
-        "Contact",
-        "PContact",
-        "NContact",
-        "Coil",
-        "SCoil",
-        "RCoil",
-        "O",
-      ].includes(kind(p)),
-    );
-    columnX[level + 1] =
-      columnX[level] +
-      (simpleOnly
-        ? 330
-        : Math.max(...group.map((p) => boxWidth(id(p))), 150) + 600);
-  }
-  const width = Math.max(900, columnX[columns] + 330);
-  const simpleKindsForColumn = [
-    "Contact",
-    "PContact",
-    "NContact",
-    "Coil",
-    "SCoil",
-    "RCoil",
-  ];
-  const positions = new Map<string, { x: number; y: number }>();
-  const rows = new Map<number, number>();
-  for (const p of parts) {
-    const level = levels.get(id(p))!;
-    const row = rows.get(level) || 0;
-    rows.set(level, row + 1);
-    positions.set(id(p), {
-      x:
-        level === 0 &&
-        all(p, "CallInfo").length &&
-        pins
-          .get(id(p))!
-          .filter((pin) => !pin.out)
-          .every((pin) => pin.name.toLowerCase() === "en")
-          ? 48
-          : kind(p) === "O"
-            ? columnX[level] +
-              Math.max(
-                170,
-                ...parts
-                  .filter(
-                    (other) =>
-                      levels.get(id(other)) === level &&
-                      ![...simpleKindsForColumn, "O"].includes(kind(other)),
-                  )
-                  .map((other) => boxWidth(id(other)) + 320),
-              )
-            : columnX[level],
-      y: 80 + row * 120,
-    });
-  }
-  const pinRow = (uid: string, name: string) =>
-    ["Contact", "PContact", "NContact", "Coil", "SCoil", "RCoil"].includes(
-      kind(parts.find((p) => id(p) === uid)!),
-    )
-      ? 0
-      : (pinOffsets.get(uid)?.get(name) || 0) / rowGap;
-  const simpleKinds = [
-    "Contact",
-    "PContact",
-    "NContact",
-    "Coil",
-    "SCoil",
-    "RCoil",
-  ];
   const incoming = (uid: string) =>
     wires.flatMap((w) => {
       const con = all(w, "NameCon").filter(
@@ -847,6 +798,139 @@ function drawNetwork(
           )
         : [];
     });
+  const splitLeg = (uid: string) => {
+    const seen = new Set<string>();
+    while (!seen.has(uid)) {
+      seen.add(uid);
+      const sources = incoming(uid);
+      if (sources.length !== 1) break;
+      const source = id(sources[0]);
+      const part = parts.find((p) => id(p) === source);
+      if (!part || !simpleKinds.includes(kind(part))) break;
+      const targets = outgoing(source);
+      if (targets.length > 1)
+        return { source, primary: id(targets[0]) === uid };
+      uid = source;
+    }
+  };
+  // The ends of parallel MOVE branches share a column even when
+  // one branch has a contact and the neighbouring branch has none.
+  const moveColumns = new Map<string, string[]>();
+  for (const part of parts.filter(
+    (p) => kind(p) === "Move" && !outgoing(id(p)).length,
+  )) {
+    const leg = splitLeg(id(part));
+    if (!leg) continue;
+    const group = moveColumns.get(leg.source) || [];
+    group.push(id(part));
+    moveColumns.set(leg.source, group);
+  }
+  for (const group of moveColumns.values()) {
+    const level = Math.max(...group.map((uid) => levels.get(uid)!));
+    for (const uid of group) levels.set(uid, level);
+  }
+  const columns = Math.max(0, ...levels.values()) + 1;
+  const openPinValue = (uid: string, pin: string) => {
+    if (output(uid, pin)) return undefined;
+    const part = parts.find((p) => id(p) === uid);
+    const call = part && all(part, "CallInfo")[0];
+    return (
+      call &&
+      symbols?.defaultInput(
+        call.getAttribute("Name") || "",
+        call.getAttribute("BlockType") || "",
+        pin,
+      )
+    );
+  };
+  const operands = new Map<string, { pin: string; value: string }[]>();
+  for (const wire of wires) {
+    const access = all(wire, "IdentCon")[0];
+    const open = all(wire, "OpenCon").length > 0;
+    if (!access && !open) continue;
+    for (const connector of all(wire, "NameCon")) {
+      const uid = id(connector);
+      const pin = connector.getAttribute("Name")!;
+      const value = access
+        ? accesses.get(id(access)) || "?"
+        : openPinValue(uid, pin) || "○";
+      const labels = operands.get(uid) || [];
+      labels.push({ pin, value });
+      operands.set(uid, labels);
+    }
+  }
+  const extents = (part: Element) => {
+    const uid = id(part);
+    const k = kind(part);
+    const width = boxWidth(uid);
+    let left = 0,
+      right = width;
+    if (k === "O") return { left, right: 26 };
+    for (const label of operands.get(uid) || []) {
+      const w = Math.max(
+        operandWidth(label.value),
+        labelWidth(symbols?.operand(label.value) || "") + 8,
+      );
+      if (metadata(label.pin)) {
+        const center = simpleKinds.includes(k) ? symbolCenter : width / 2;
+        left = Math.max(left, w / 2 - center);
+        right = Math.max(right, center + w / 2);
+      } else if (output(uid, label.pin))
+        right = Math.max(right, width + pinLabelOffset + w);
+      else left = Math.max(left, pinLabelOffset + w);
+    }
+    const instance = all(part, "Instance")[0];
+    if (instance) {
+      const half = operandWidth(symbol(instance)) / 2;
+      left = Math.max(left, half - width / 2);
+      right = Math.max(right, width / 2 + half);
+    }
+    return { left, right };
+  };
+  const columnX: number[] = [];
+  let edge = railX + 14;
+  for (let level = 0; level < columns; level++) {
+    const group = parts.filter((p) => levels.get(id(p)) === level).map(extents);
+    columnX[level] = edge + Math.max(0, ...group.map((p) => p.left));
+    edge = columnX[level] + Math.max(0, ...group.map((p) => p.right)) + 34;
+  }
+  const positions = new Map<string, { x: number; y: number }>();
+  const rows = new Map<number, number>();
+  for (const p of parts) {
+    const level = levels.get(id(p))!;
+    const row = rows.get(level) || 0;
+    rows.set(level, row + 1);
+    positions.set(id(p), { x: columnX[level], y: 34 + row * 78 });
+  }
+  const pinRow = (uid: string, name: string) =>
+    simpleKinds.includes(kind(parts.find((p) => id(p) === uid)!))
+      ? 0
+      : (pinOffsets.get(uid)?.get(name) || 0) / rowGap;
+  // Keep terminal coils on the shared right edge. Coils at the end of
+  // a secondary fan-out leg stay near that branch's last instruction.
+  const terminalCoils = parts.filter(
+    (p) => coilKinds.includes(kind(p)) && !outgoing(id(p)).length,
+  );
+  const coilEnds = new Set(terminalCoils.map(id));
+  const rightCoils = terminalCoils.filter(
+    (p) => splitLeg(id(p))?.primary !== false,
+  );
+  const rightCoilIds = new Set(rightCoils.map(id));
+  const rightCoilX = Math.max(
+    825,
+    ...rightCoils.map((p) => positions.get(id(p))!.x),
+  );
+  for (const part of rightCoils) positions.get(id(part))!.x = rightCoilX;
+  const contentRight = Math.max(
+    0,
+    ...parts.map((p) => positions.get(id(p))!.x + extents(p).right),
+  );
+  const width = Math.max(
+    990,
+    Math.ceil(contentRight + 42),
+    rightCoils.length ? rightCoilX + symbolWidth + 60 : 0,
+  );
+  const rungEnd = width - 24;
   // Inline chains belong to their destination pin. Move the whole chain when
   // making room; leaving a single contact behind draws wires through other FBs.
   const attachment = new Map<string, { parent: string; offset: number }>();
@@ -867,7 +951,7 @@ function drawNetwork(
       const sources = incoming(uid);
       if (
         sources.length === 1 &&
-        ![...simpleKinds, "O"].includes(
+        !["Contact", "PContact", "NContact", "O"].includes(
           kind(parts.find((p) => id(p) === id(sources[0]))!),
         ) &&
         outgoing(id(sources[0])).length === 1
@@ -898,13 +982,10 @@ function drawNetwork(
         positions.get(id(part))!.y = positions.get(a.uid)!.y + a.offset;
     }
   };
-  const boxHeight = (uid: string) =>
-    Math.max(
-      76,
-      44 +
-        Math.max(0, ...pins.get(uid)!.map((pin) => pinRow(uid, pin.name) + 1)) *
-          rowGap,
-    );
+  const boxTop = 14;
+  const boxBottom = (uid: string) =>
+    56 +
+    Math.max(0, ...pins.get(uid)!.map((pin) => pinRow(uid, pin.name) * rowGap));
   const footprint = (part: Element) => {
     const uid = id(part),
       pos = positions.get(uid)!,
@@ -921,14 +1002,19 @@ function drawNetwork(
         );
       const n = Math.max(1, ...labels.map(lineCount));
       return {
-        top: pos.y + 30 - n * 13 - 16,
+        top: pos.y + 30 - n * lineHeight - 16,
         bottom:
-          pos.y + (["PContact", "NContact"].includes(k) ? 66 + n * 13 : 55),
+          pos.y +
+          (["PContact", "NContact"].includes(k) ? 63 + n * lineHeight : 55),
       };
     }
     const instance = all(part, "Instance")[0];
-    const head = instance ? lineCount(symbol(instance)) * 13 + 48 : 32;
-    return { top: pos.y - head, bottom: pos.y + boxHeight(uid) + 12 };
+    const head = instance
+      ? lineCount(symbol(instance)) * lineHeight + 44
+      : all(part, "CallInfo").length
+        ? 13
+        : -boxTop;
+    return { top: pos.y - head, bottom: pos.y + boxBottom(uid) };
   };
   syncPositions();
   const topShift = Math.max(
@@ -947,7 +1033,7 @@ function drawNetwork(
       for (let i = 1; i < group.length; i++) {
         const before = group[i - 1],
           after = group[i];
-        const gap = footprint(before).bottom + 16 - footprint(after).top;
+        const gap = footprint(before).bottom + 10 - footprint(after).top;
         const a = anchor(id(after)),
           b = anchor(id(before));
         if (gap > 0 && a.uid !== b.uid) {
@@ -960,7 +1046,7 @@ function drawNetwork(
     if (!moved) break;
   }
   const height = Math.max(
-    200,
+    100,
     ...[...positions.values()].map((p) => p.y + pitch - 30),
   );
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -981,6 +1067,7 @@ function drawNetwork(
     owner: string;
     wire: string;
   }[] = [];
+  const tails: { uid: string; start: DiagramPoint; endX: number }[] = [];
   let wireId = "";
   const add = (
     tag: string,
@@ -1024,6 +1111,7 @@ function drawNetwork(
     value: string,
     anchor = "start",
     cls = "",
+    below = false,
   ) => {
     const label =
       cls === "tia-operand"
@@ -1038,11 +1126,12 @@ function drawNetwork(
     );
     if (cls === "tia-operand") {
       const lines = operandLines(value);
-      const top = anchor === "middle" ? y - (lines.length - 1) * 13 : y;
+      const top =
+        anchor === "middle" && !below ? y - (lines.length - 1) * lineHeight : y;
       lines.forEach((line, i) => {
         const span = document.createElementNS(svg.namespaceURI, "tspan");
         span.setAttribute("x", String(x));
-        span.setAttribute("y", String(top + i * 13));
+        span.setAttribute("y", String(top + i * lineHeight));
         span.textContent = line;
         e.append(span);
       });
@@ -1055,13 +1144,13 @@ function drawNetwork(
       const top = Number(spans[0]?.getAttribute("y") || y) - 11;
       const w = Math.max(
         16,
-        ...spans.map((s) => (s.textContent?.length || 0) * 6.7 + 8),
+        ...spans.map((s) => labelWidth(s.textContent || "") + 8),
       );
       const r = add("rect", {
         x: anchor === "middle" ? x - w / 2 : anchor === "end" ? x - w : x - 4,
         y: top,
         width: w,
-        height: Math.max(1, spans.length) * 13 + 3,
+        height: Math.max(1, spans.length) * lineHeight + 3,
         fill: "#ffff49",
         class: "tia-safety-operand",
       });
@@ -1083,13 +1172,13 @@ function drawNetwork(
     return {
       x:
         kind(parts.find((p) => id(p) === uid)!) === "O"
-          ? pos.x + 75
+          ? pos.x + 13
           : pos.x + (pin.out ? boxWidth(uid) : 0),
       y: pos.y + 44 + row * rowGap,
       out: pin.out,
     };
   };
-  const rail = line(30, 25, 30, height - 20, true);
+  const rail = line(railX, 15, railX, height - 20, true);
   for (const w of wires) {
     const con = all(w, "NameCon");
     const access = all(w, "IdentCon")[0];
@@ -1100,34 +1189,20 @@ function drawNetwork(
         const pos = positions.get(id(c));
         if (!pos) continue;
         if (metadata(name)) {
-          const simple = [
-            "Contact",
-            "PContact",
-            "NContact",
-            "Coil",
-            "SCoil",
-            "RCoil",
-          ].includes(kind(parts.find((p) => id(p) === id(c))!));
-          const operand = accesses.get(id(access)) || "?";
-          const labelY =
-            pos.y +
-            (name.toLowerCase() === "bit"
-              ? 64 + (lineCount(operand) - 1) * 13
-              : simple
-                ? 30
-                : -10);
-          text(
-            pos.x + 75,
-            labelY,
-            accesses.get(id(access)) || "?",
-            "middle",
-            "tia-operand",
+          const uid = id(c);
+          const simple = simpleKinds.includes(
+            kind(parts.find((p) => id(p) === uid)!),
           );
-          const addr = symbols?.operand(accesses.get(id(access)) || "");
+          const operand = accesses.get(id(access)) || "?";
+          const below = name.toLowerCase() === "bit";
+          const addr = symbols?.operand(operand);
+          const labelX = pos.x + (simple ? symbolCenter : boxWidth(uid) / 2);
+          const labelY = pos.y + (below ? (addr ? 79 : 66) : simple ? 30 : -10);
+          text(labelX, labelY, operand, "middle", "tia-operand", below);
           if (addr)
             text(
-              pos.x + 75,
-              labelY - lineCount(operand) * 13 - 5,
+              labelX,
+              labelY - (below ? 13 : lineCount(operand) * lineHeight + 2),
               addr,
               "middle",
               "tia-address",
@@ -1139,15 +1214,15 @@ function drawNetwork(
         const constantValue = constants.get(accesses.get(id(access)) || "");
         if (constantValue !== undefined)
           text(
-            p.x + (p.out ? 22 : -22),
+            p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
             p.y - 12,
             constantValue,
             p.out ? "start" : "end",
             "tia-constant-value",
           );
-        line(p.x, p.y, p.x + (p.out ? 18 : -18), p.y, true);
+        line(p.x, p.y, p.x + (p.out ? 16 : -16), p.y, true);
         text(
-          p.x + (p.out ? 22 : -22),
+          p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
           p.y + 4,
           accesses.get(id(access)) || "?",
           p.out ? "start" : "end",
@@ -1156,7 +1231,7 @@ function drawNetwork(
         const addr = symbols?.operand(accesses.get(id(access)) || "");
         if (addr)
           text(
-            p.x + (p.out ? 22 : -22),
+            p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
             p.y - 10,
             addr,
             p.out ? "start" : "end",
@@ -1169,18 +1244,9 @@ function drawNetwork(
         owner = id(c);
         const p = point(id(c), c.getAttribute("Name")!);
         if (!p) continue;
-        const part = parts.find((part) => id(part) === id(c));
-        const call = part && all(part, "CallInfo")[0];
-        const def =
-          call && !p.out
-            ? symbols?.defaultInput(
-                call.getAttribute("Name") || "",
-                call.getAttribute("BlockType") || "",
-                c.getAttribute("Name")!,
-              )
-            : undefined;
+        const def = openPinValue(id(c), c.getAttribute("Name")!);
         const label = text(
-          p.x + (p.out ? 22 : -22),
+          p.x + (p.out ? pinLabelOffset : -pinLabelOffset),
           p.y + 4,
           def === undefined ? "○" : def,
           p.out ? "start" : "end",
@@ -1206,51 +1272,46 @@ function drawNetwork(
     const info = all(p, "CallInfo")[0];
     const name = info?.getAttribute("Name") || k;
     if (k === "O") continue;
-    const simple = [
-      "Contact",
-      "PContact",
-      "NContact",
-      "Coil",
-      "SCoil",
-      "RCoil",
-    ].includes(k);
-    if (simple) {
+    if (simpleKinds.includes(k)) {
+      const x = pos.x + symbolCenter;
+      const y = pos.y + 44;
       add("rect", {
-        x: pos.x + 61,
-        y: pos.y + 33,
-        width: 28,
-        height: 22,
+        x: x - 10,
+        y: y - 10,
+        width: 20,
+        height: 20,
         fill: "transparent",
         class: "tia-symbol-hit",
       });
-      const y = pos.y + 44;
-      line(pos.x, y, pos.x + 65, y, true);
-      line(pos.x + 85, y, pos.x + 150, y, true);
-      if (["Coil", "SCoil", "RCoil"].includes(k)) {
+      const coil = coilKinds.includes(k);
+      line(pos.x, y, x - 8, y, true);
+      line(x + 8, y, pos.x + symbolWidth, y, true);
+      if (coil) {
         add("path", {
-          d: `M${pos.x + 69} ${y - 10} Q${pos.x + 60} ${y} ${pos.x + 69} ${y + 10} M${pos.x + 81} ${y - 10} Q${pos.x + 90} ${y} ${pos.x + 81} ${y + 10}`,
+          d: `M${x - 5} ${y - 8} Q${x - 12} ${y} ${x - 5} ${y + 8} M${x + 5} ${y - 8} Q${x + 12} ${y} ${x + 5} ${y + 8}`,
           fill: "none",
           stroke: "currentColor",
-          "stroke-width": 2,
+          "stroke-width": 1.7,
         });
-        if (k !== "Coil")
-          text(pos.x + 75, y + 4, k === "SCoil" ? "S" : "R", "middle");
-        if (
-          !wires.some((w) =>
-            all(w, "NameCon").some(
-              (c) => id(c) === id(p) && c.getAttribute("Name") === "out",
-            ),
-          )
-        )
-          line(pos.x + 150, y, Math.min(width - 30, pos.x + 250), y);
+        if (k !== "Coil") text(x, y + 4, k === "SCoil" ? "S" : "R", "middle");
+        if (coilEnds.has(id(p))) {
+          const end = rightCoilIds.has(id(p))
+            ? rungEnd
+            : pos.x + symbolWidth + 20;
+          tails.push({
+            uid: id(p),
+            start: { x: pos.x + symbolWidth, y },
+            endX: end,
+          });
+        }
       } else {
-        line(pos.x + 65, y - 8, pos.x + 65, y + 8, true);
-        line(pos.x + 85, y - 8, pos.x + 85, y + 8, true);
+        line(x - 8, y - 7, x - 8, y + 7, true);
+        line(x + 8, y - 7, x + 8, y + 7, true);
         if (k === "PContact" || k === "NContact")
-          text(pos.x + 75, y + 4, k === "PContact" ? "P" : "N", "middle");
+          text(x, y + 4, k === "PContact" ? "P" : "N", "middle");
         if (all(p, "Negated").some((e) => e.getAttribute("Name") === "operand"))
           add("path", {
-            d: `M${pos.x + 65} ${y + 10} L${pos.x + 85} ${y - 10}`,
+            d: `M${x - 8} ${y + 8} L${x + 8} ${y - 8}`,
             stroke: "currentColor",
             "stroke-width": 1.5,
           });
@@ -1258,29 +1319,26 @@ function drawNetwork(
       continue;
     }
     const list = pins.get(id(p))!;
-    const h = Math.max(
-      76,
-      44 + Math.max(...list.map((pin) => pinRow(id(p), pin.name) + 1)) * rowGap,
-    );
+    const h = boxBottom(id(p)) - boxTop;
     add("rect", {
       x: pos.x,
-      y: pos.y,
+      y: pos.y + boxTop,
       width: boxWidth(id(p)),
       height: h,
       fill: "var(--tia-box, #e1e5ed)",
     });
     add("rect", {
       x: pos.x,
-      y: pos.y,
+      y: pos.y + boxTop,
       width: boxWidth(id(p)),
-      height: 28,
+      height: 18,
       fill: safety
         ? "var(--tia-safety-title, #fff45c)"
         : "var(--tia-title, #cbd1df)",
     });
     text(
       pos.x + boxWidth(id(p)) / 2,
-      pos.y + 19,
+      pos.y + boxTop + 13,
       name === "Sr"
         ? "SR"
         : name === "Add"
@@ -1346,7 +1404,7 @@ function drawNetwork(
       const activate = callLink(name, info.getAttribute("BlockType") || "");
       const hit = add("rect", {
         x: pos.x,
-        y: pos.y,
+        y: pos.y + boxTop,
         width: boxWidth(id(p)),
         height: h,
         fill: "transparent",
@@ -1379,7 +1437,6 @@ function drawNetwork(
     );
     if (
       continuation &&
-      p.getAttribute("DisabledENO") !== "true" &&
       !wires.some((w) =>
         all(w, "NameCon").some(
           (c) =>
@@ -1388,7 +1445,12 @@ function drawNetwork(
       )
     ) {
       const pt = point(id(p), continuation.name)!;
-      line(pt.x, pt.y, Math.min(width - 30, pt.x + 180), pt.y);
+      const topRow = Math.min(...[...positions.values()].map((pos) => pos.y));
+      const end =
+        rightCoils.length === 0 && pos.y === topRow && !outgoing(id(p)).length
+          ? rungEnd
+          : Math.min(rungEnd, pt.x + 44);
+      tails.push({ uid: id(p), start: pt, endX: end });
     }
   }
   for (const part of parts.filter((p) => kind(p) !== "O")) {
@@ -1493,12 +1555,26 @@ function drawNetwork(
         height: b.height + 2 * pad,
       };
     });
-  for (const path of wirePaths) {
-    const dy = shifts.get(path.owner) || 0;
-    path.start.y += dy;
-    path.end.y += dy;
-    path.e.removeAttribute("transform");
+  for (const { uid, start, endX } of tails) {
+    const { x } = start;
+    const y = start.y + shifts.get(uid)!;
+    // A rung end is decorative. Stop before a nearby label or block
+    // instead of routing the cap through a neighbour.
+    const end = Math.min(
+      endX,
+      ...obstacles
+        .filter(
+          (r) =>
+            r.x + r.width > x + 0.1 && r.y < y + 4 && r.y + r.height > y - 4,
+        )
+        .map((r) => r.x - 8),
+    );
+    if (end <= x + 6) continue;
+    owner = uid;
+    line(x, y, end, y);
+    line(end, y - 3, end, y + 3, true);
   }
+  owner = "";
   const junctionX = (preferred: number, top: number, bottom: number) => {
     const candidates = [
       preferred,
@@ -1524,10 +1600,10 @@ function drawNetwork(
       ps = pins.get(id(p))!.map((pin) => point(id(p), pin.name)!);
     pos.x =
       junctionX(
-        pos.x + 75,
+        pos.x + 13,
         Math.min(...ps.map((p) => p.y)),
         Math.max(...ps.map((p) => p.y)),
-      ) - 75;
+      ) - 13;
     svg
       .querySelector(`[data-part="${id(p)}"]`)
       ?.setAttribute("data-layout-x", String(pos.x));
@@ -1540,7 +1616,7 @@ function drawNetwork(
       .map((c) => point(id(c), c.getAttribute("Name")!))
       .filter((p) => p !== null);
     if (all(w, "Powerrail").length)
-      for (const p of points) line(30, p.y, p.x, p.y);
+      for (const p of points) line(railX, p.y, p.x, p.y);
     else if (points.length > 2) {
       const src = points.find((p) => p.out) || points[0];
       const others = points.filter((p) => p !== src);
@@ -1572,7 +1648,7 @@ function drawNetwork(
         .get(id(p))!
         .map((pin) => point(id(p), pin.name))
         .filter((pt) => pt !== null);
-      const bus = pos.x + 75;
+      const bus = pos.x + 13;
       for (const pt of ps) line(pt.x, pt.y, bus, pt.y);
       if (ps.length) {
         line(
@@ -1608,7 +1684,7 @@ function drawNetwork(
     obstacles,
     wirePaths.flatMap((p) => [p.start, p.end]),
   );
-  let bottom = Math.max(180, ...obstacles.map((r) => r.y + r.height)) + 24;
+  let bottom = Math.max(70, ...obstacles.map((r) => r.y + r.height)) + 24;
   let right = Math.max(width, ...obstacles.map((r) => r.x + r.width + 24));
   const routed: {
     path: (typeof wirePaths)[number];
@@ -1704,7 +1780,7 @@ function drawNetwork(
     if (bridges.length)
       entry.path.e.setAttribute("data-bridges", JSON.stringify(bridges));
   }
-  rail.setAttribute("d", `M30 25 V${bottom - 20}`);
+  rail.setAttribute("d", `M${railX} 15 V${bottom - 16}`);
   svg.setAttribute("width", String(right));
   svg.setAttribute("height", String(bottom));
   svg.setAttribute("viewBox", `0 0 ${right} ${bottom}`);

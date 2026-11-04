@@ -1297,7 +1297,7 @@ form > .dialog-actions {
 }
 .tia-network svg {
   max-width: none;
-  font-family: monospace;
+  font-family: Arial, sans-serif;
 }
 .tia-view pre {
   overflow: auto;
