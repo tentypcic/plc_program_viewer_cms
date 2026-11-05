@@ -19,7 +19,7 @@ const child = (e: Element, name: string) =>
   Array.from(e.children).find((c) => c.localName === name);
 const value = (e: Element, name: string) => child(e, name)?.textContent || "";
 export function parseTia(text: string) {
-  if (text.length > 2000000 || /<!DOCTYPE|<!ENTITY/i.test(text))
+  if (text.length > 50 * 1024 * 1024 || /<!DOCTYPE|<!ENTITY/i.test(text))
     throw Error("Unsafe or excessive TIA XML");
   const xml = new DOMParser().parseFromString(text, "application/xml");
   if (all(xml, "parsererror").length) throw Error("Invalid TIA XML");

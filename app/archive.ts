@@ -12,8 +12,13 @@ import { importData } from "./legacy";
 import { decodeText } from "./text";
 import { importTia } from "./tia";
 import type { Repository, Asset } from "./db";
-export const MAX_ARCHIVE = 100 * 1024 * 1024;
-const MAX_UNPACKED = 250 * 1024 * 1024;
+export const MAX_ARCHIVE = 250 * 1024 * 1024;
+const MAX_UNPACKED = 500 * 1024 * 1024;
+// VCI keeps library links and workspace settings alongside exported sources.
+// They contain no XML/SCL program to display and are not decompressed.
+const isVciMetadata = (path: string) =>
+  /\.liblink$/i.test(path) ||
+  /(?:^|\/)\.vci\/workspace\.vci(?:\.exportFormats)?\.config$/i.test(path);
 export const isTiaSource = (doc: Doc) =>
   !doc.url && doc.text !== undefined && /\.(xml|scl)$/i.test(doc.name);
 
@@ -56,8 +61,7 @@ export function exportTiaZip(project: Project) {
     folders.set(node.id, path);
     return path;
   };
-  for (const node of project.nodes)
-    if (node.kind === "group") folderPath(node);
+  for (const node of project.nodes) if (node.kind === "group") folderPath(node);
   let total = 0;
   for (const doc of sources) {
     const extension = doc.name.slice(-4);
@@ -71,7 +75,7 @@ export function exportTiaZip(project: Project) {
         : doc.text!;
     const bytes = strToU8(text);
     total += bytes.length;
-    if (total > MAX_UNPACKED) throw Error("ZIP exceeds 250 MiB unpacked");
+    if (total > MAX_UNPACKED) throw Error("ZIP exceeds 500 MiB unpacked");
     const path = uniquePath(
       folderPath(nodes.get(doc.nodeId)!),
       doc.name.slice(0, -4),
@@ -79,10 +83,13 @@ export function exportTiaZip(project: Project) {
     );
     files[path] = bytes;
   }
-  if (Object.keys(files).length > 20001) throw Error("ZIP exceeds 20,001 entries");
+  if (Object.keys(files).length > 20001)
+    throw Error("ZIP exceeds 20,001 entries");
   const data = zipSync(files);
-  if (data.length > MAX_ARCHIVE) throw Error("ZIP exceeds 100 MiB");
-  return new Blob([data as Uint8Array<ArrayBuffer>], { type: "application/zip" });
+  if (data.length > MAX_ARCHIVE) throw Error("ZIP exceeds 250 MiB");
+  return new Blob([data as Uint8Array<ArrayBuffer>], {
+    type: "application/zip",
+  });
 }
 
 export async function exportZip(
@@ -103,14 +110,14 @@ export async function exportZip(
       if (!blob) throw Error("Missing document: " + d.name);
       total += blob.size;
       if (total > MAX_UNPACKED)
-        throw Error("Backup exceeds 250 MiB; export projects individually");
+        throw Error("Backup exceeds 500 MiB; export projects individually");
       files["documents/" + d.id] = new Uint8Array(await blob.arrayBuffer());
     }
   if (Object.keys(files).length > 20001)
     throw Error("ZIP exceeds 20,001 entries; export projects individually");
   const data = zipSync(files, { level: 0 });
   if (data.length > MAX_ARCHIVE)
-    throw Error("ZIP exceeds 100 MiB; export projects individually");
+    throw Error("ZIP exceeds 250 MiB; export projects individually");
   return new Blob([data as Uint8Array<ArrayBuffer>], {
     type: "application/zip",
   });
@@ -119,23 +126,27 @@ export async function readImport(
   file: File,
 ): Promise<{ projects: Project[]; assets: Asset[] }> {
   if (!file.size || file.size > MAX_ARCHIVE)
-    throw Error("File must be nonempty and ≤100 MiB");
+    throw Error("File must be nonempty and ≤250 MiB");
   if (/\.zip$/i.test(file.name)) {
     let total = 0,
       count = 0;
     const files = unzipSync(new Uint8Array(await file.arrayBuffer()), {
       filter: (entry) => {
+        const metadata = isVciMetadata(entry.name);
+        if (++count > 20001) throw Error("ZIP exceeds 20,001 entries");
+        if (entry.originalSize > 50 * 1024 * 1024)
+          throw Error("ZIP entry exceeds 50 MiB: " + entry.name);
+        if ((total += entry.originalSize) > MAX_UNPACKED)
+          throw Error("ZIP exceeds 500 MiB unpacked");
         if (
-          ++count > 20001 ||
-          entry.originalSize > 50 * 1024 * 1024 ||
-          (total += entry.originalSize) > MAX_UNPACKED ||
           /(^\/|\\|(^|\/)\.\.(\/|$))/.test(entry.name) ||
-          !/^(.*\/|.*\.(xml|scl)|manifest\.json|documents\/[a-f0-9-]{36})$/i.test(
-            entry.name,
-          )
+          (!metadata &&
+            !/^(.*\/|.*\.(xml|scl)|manifest\.json|documents\/[a-f0-9-]{36})$/i.test(
+              entry.name,
+            ))
         )
           throw Error("Unsafe or excessive ZIP entry");
-        return true;
+        return !metadata;
       },
     });
     if (!files["manifest.json"]) {

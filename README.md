@@ -20,7 +20,7 @@ Export the software of one PLC to a local folder using the **Version Control Int
 
 <img src="docs/screenshots/tia-vci-workspace.png" alt="TIA Portal VCI editor with the Project tree on the left and exported files in the Workspace pane on the right" width="763">
 
-*TIA Portal VCI editor with the Project and Workspace panes. [Siemens documentation](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/user-interface-of-the-version-control-interface/overview-of-the-workspace-editor).*
+_TIA Portal VCI editor with the Project and Workspace panes. [Siemens documentation](https://docs.tia.siemens.cloud/r/en-us/v20/using-tia-portal-version-control-interface/user-interface-of-the-version-control-interface/overview-of-the-workspace-editor)._
 
 ## Demo
 
@@ -44,7 +44,7 @@ The [demo XML files](demo) are authored for this viewer. The example is verified
 ## Import scope and limits
 
 - Import the PLC software exported through VCI as XML/SCL. TIA Portal project and archive files (`.ap*` and `.zap*`) must be opened in TIA Portal for export first.
-- ZIP input is limited to 100 MiB and 250 MiB after extraction.
+- ZIP input is limited to 250 MiB and 500 MiB after extraction; individual files can be up to 50 MiB. VCI workspace settings (`.vci`) and library link metadata (`.liblink`) are skipped; import the referenced XML/SCL sources to browse those blocks.
 - Browser storage is specific to the site and browser profile. Keep a ZIP backup before clearing site data or switching profiles.
 
 ## 🚀 Run locally
@@ -75,4 +75,3 @@ The detailed guides are in Polish. See [TIA preview scope](docs/TIA_XML.md) for 
 ## 🧑‍💻 Author and License
 
 Created by [tentypcic](https://github.com/tentypcic). Distributed under the [MIT License](LICENSE).
-

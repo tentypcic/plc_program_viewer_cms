@@ -136,7 +136,7 @@ const pl = {
   codeHelp:
     "Podgląd składni SCL jest leksykalny. Nie wykonuje kodu ani nie sprawdza poprawności programu.",
   importHint:
-    "JSON: nowy lub starszy format. ZIP: kopia Viewer lub eksport TIA XML z folderami. Maks. 100 MiB pliku, 250 MiB po rozpakowaniu.",
+    "JSON: nowy lub starszy format. ZIP: kopia Viewer lub eksport TIA XML z folderami. Maks. 250 MiB pliku, 500 MiB po rozpakowaniu.",
   noLegacy: "Brak kopii danych sprzed migracji.",
   openTabs: "Otwarte dokumenty",
   closeOtherTabs: "Zamknij pozostałe",
@@ -284,7 +284,7 @@ const en: Record<keyof typeof pl, string> = {
   codeHelp:
     "SCL highlighting is lexical. It does not execute or validate PLC programs.",
   importHint:
-    "JSON: current or legacy format. ZIP: Viewer backup or TIA XML export with folders. Max 100 MiB file, 250 MiB unpacked.",
+    "JSON: current or legacy format. ZIP: Viewer backup or TIA XML export with folders. Max 250 MiB file, 500 MiB unpacked.",
   noLegacy: "No pre-migration backup.",
   openTabs: "Open documents",
   closeOtherTabs: "Close other tabs",

@@ -38,6 +38,40 @@ try {
       parseSclHeader,
       tiaSymbolIndex,
     } = await import("/app/tia.ts");
+    {
+      const { readImport } = await import("/app/archive.ts");
+      const { zipSync, strToU8 } = await import(
+        "/node_modules/.vite/deps/fflate.js"
+      );
+      const largeXml = files["Program blocks/DemoData.xml"].replace(
+        "</Document>",
+        " ".repeat(2_100_000) + "</Document>",
+      );
+      const vciZip = zipSync({
+        "Project/DB.xml": strToU8(largeXml),
+        "Project/.vci/workspace.vci.config": strToU8("workspace settings"),
+        "Project/.vci/workspace.vci.exportFormats.config":
+          strToU8("export settings"),
+        "Project/Types/Library.liblink": strToU8("library reference"),
+      });
+      const imported = await readImport(new File([vciZip], "VCI.zip"));
+      if (
+        imported.projects[0].documents.length !== 1 ||
+        imported.projects[0].documents[0].text !== largeXml
+      )
+        throw Error("VCI metadata and XML above 2 MiB must import together");
+      let unsafeAccepted = false;
+      try {
+        parseTia(
+          largeXml.replace(
+            "<Document>",
+            '<!DOCTYPE Document [<!ENTITY x "bad">]><Document>',
+          ),
+        );
+        unsafeAccepted = true;
+      } catch {}
+      if (unsafeAccepted) throw Error("Large XML must still reject entities");
+    }
     const sample = files["Program blocks/DemoData.xml"];
     for (const rootType of [
       "SW.Blocks.ArrayDB",
@@ -249,9 +283,15 @@ try {
       throw Error("Open pin default from declaration");
     const openOutput = tiaView(
       files["Program blocks/SampleCycle.xml"]
-        .replace('Name="MotorOn" Section="Output" Type="Bool"', 'Name="StopID" Section="Output" Type="Int"')
+        .replace(
+          'Name="MotorOn" Section="Output" Type="Bool"',
+          'Name="StopID" Section="Output" Type="Int"',
+        )
         .replace('<IdentCon UId="2"/>', '<OpenCon UId="20"/>')
-        .replace('<NameCon UId="10" Name="MotorOn"/>', '<NameCon UId="10" Name="StopID"/>'),
+        .replace(
+          '<NameCon UId="10" Name="MotorOn"/>',
+          '<NameCon UId="10" Name="StopID"/>',
+        ),
     );
     const defaultOutput = openOutput.querySelector(".tia-default-pin");
     if (
