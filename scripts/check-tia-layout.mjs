@@ -71,7 +71,18 @@ try {
         wire('<IdentCon UId="4"/>' + pin(44, "in")) +
         wire('<IdentCon UId="1"/>' + pin(45, "in")),
     );
-    const xml = `<Document><SW.Blocks.FC><AttributeList><Name>LayoutSample</Name></AttributeList><ObjectList>${first}${second}${third}</ObjectList></SW.Blocks.FC></Document>`;
+    const operators = {
+      Eq: "==",
+      Ne: "<>",
+      Lt: "<",
+      Le: "<=",
+      Gt: ">",
+      Ge: ">=",
+    };
+    const comparisons = Object.keys(operators).map((kind) =>
+      third.replace('Name="Eq"', `Name="${kind}"`),
+    );
+    const xml = `<Document><SW.Blocks.FC><AttributeList><Name>LayoutSample</Name></AttributeList><ObjectList>${first}${second}${comparisons.join("")}</ObjectList></SW.Blocks.FC></Document>`;
     let networks = 0;
     for (const theme of ["light", "dark"]) {
       document.documentElement.dataset.theme = theme;
@@ -94,10 +105,14 @@ try {
         const contact = svg.querySelector('[data-part="21"]');
         const comparison = svg.querySelector('[data-part="40"]');
         if (comparison) {
-          const captions = [...svg.querySelectorAll('text[data-owner="40"]')].map(
-            (e) => e.firstChild?.textContent,
-          );
-          if (!captions.includes("==") || !captions.includes("UInt") || captions.includes("PRE"))
+          const captions = [
+            ...svg.querySelectorAll('text[data-owner="40"]'),
+          ].map((e) => e.firstChild?.textContent);
+          if (
+            !captions.includes(operators[comparison.dataset.kind]) ||
+            !captions.includes("UInt") ||
+            captions.includes("PRE")
+          )
             throw Error("Comparison is not rendered as a typed contact");
           const rungY = (uid) =>
             +svg.querySelector(`[data-part="${uid}"]`).dataset.layoutY;
@@ -152,13 +167,18 @@ try {
         for (const path of svg.querySelectorAll("[data-route]")) {
           const points = JSON.parse(path.getAttribute("data-route"));
           for (let i = 1; i < points.length; i++) {
-            const a = points[i - 1], b = points[i];
-            if (a.x === b.x && stubs.some((r) =>
-              a.x > r.x - 4 &&
-              a.x < r.x + r.width + 4 &&
-              Math.min(a.y, b.y) <= r.y &&
-              Math.max(a.y, b.y) >= r.y
-            ))
+            const a = points[i - 1],
+              b = points[i];
+            if (
+              a.x === b.x &&
+              stubs.some(
+                (r) =>
+                  a.x > r.x - 4 &&
+                  a.x < r.x + r.width + 4 &&
+                  Math.min(a.y, b.y) <= r.y &&
+                  Math.max(a.y, b.y) >= r.y,
+              )
+            )
               throw Error("Branch bus runs too close to an operand stub");
           }
           for (let i = 1; i < points.length; i++)
@@ -183,7 +203,7 @@ try {
     }
     return networks;
   });
-  assert.equal(result, 6);
+  assert.equal(result, 16);
   console.log(
     "TIA layout: mixed FB chains, long operands, pulse/OR branches and coil fan-out passed in both themes",
   );

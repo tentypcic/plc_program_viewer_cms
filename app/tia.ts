@@ -128,6 +128,14 @@ export function importTia(
   validateProject(p);
   return p;
 }
+const comparisons = new Map([
+  ["Eq", "=="],
+  ["Ne", "<>"],
+  ["Lt", "<"],
+  ["Le", "<="],
+  ["Gt", ">"],
+  ["Ge", ">="],
+]);
 function typeDefault(dt: string): string | undefined {
   return /^bool$/i.test(dt)
     ? "false"
@@ -492,7 +500,7 @@ function drawNetwork(
   const lineHeight = 13;
   const simpleKinds = [
     "Contact",
-    "Eq",
+    ...comparisons.keys(),
     "PContact",
     "NContact",
     "Coil",
@@ -564,7 +572,24 @@ function drawNetwork(
     ["operand", "bit"].includes(name.toLowerCase());
   const comparisonOperand = (uid: string, name: string) =>
     /^in[12]$/i.test(name) &&
-    parts.some((p) => id(p) === uid && kind(p) === "Eq");
+    parts.some((p) => id(p) === uid && comparisons.has(kind(p)));
+  const systemPins: Record<string, Record<string, string>> = {
+    GetChecksum: {
+      range: "0",
+      subrange: "0",
+      done: "false",
+      busy: "false",
+      error: "false",
+      status: "16#0",
+    },
+    Get_IM_Data: {
+      im_type: "0",
+      done: "false",
+      busy: "false",
+      error: "false",
+      status: "16#0",
+    },
+  };
   const output = (uid: string, name: string) => {
     const part = parts.find((p) => id(p) === uid);
     const param =
@@ -572,7 +597,10 @@ function drawNetwork(
       all(part, "Parameter").find((p) => p.getAttribute("Name") === name);
     return param
       ? param.getAttribute("Section") === "Output"
-      : /^(out\d*|q|eno|et|ret_val)$/i.test(name);
+      : /^(out\d*|q|eno|et|ret_val)$/i.test(name) ||
+          (!!part &&
+            Object.hasOwn(systemPins, kind(part)) &&
+            /^(done|busy|error|status)$/i.test(name));
   };
   const pins = new Map(
     parts.map((p) => {
@@ -689,7 +717,10 @@ function drawNetwork(
       )) {
         const part = parts.find((p) => id(p) === id(c));
         if (!part) continue;
-        if (["Contact", "Eq", "PContact", "NContact"].includes(kind(part))) {
+        if (
+          ["Contact", "PContact", "NContact"].includes(kind(part)) ||
+          comparisons.has(kind(part))
+        ) {
           for (const labelWire of wires.filter((w) =>
             all(w, "NameCon").some(
               (c) =>
@@ -876,14 +907,23 @@ function drawNetwork(
   const openPinValue = (uid: string, pin: string) => {
     const part = parts.find((p) => id(p) === uid);
     const call = part && all(part, "CallInfo")[0];
-    if (!call) return undefined;
+    if (!call) {
+      const values =
+        part && Object.hasOwn(systemPins, kind(part))
+          ? systemPins[kind(part)]
+          : undefined;
+      const key = pin.toLowerCase();
+      return values && Object.hasOwn(values, key) ? values[key] : undefined;
+    }
     if (output(uid, pin)) {
       return typeDefault(pinType(uid, pin) || "");
     }
-    return symbols?.defaultInput(
-      call.getAttribute("Name") || "",
-      call.getAttribute("BlockType") || "",
-      pin,
+    return (
+      symbols?.defaultInput(
+        call.getAttribute("Name") || "",
+        call.getAttribute("BlockType") || "",
+        pin,
+      ) ?? typeDefault(pinType(uid, pin) || "")
     );
   };
   const operands = new Map<string, { pin: string; value: string }[]>();
@@ -896,7 +936,7 @@ function drawNetwork(
       const pin = connector.getAttribute("Name")!;
       const value = access
         ? accesses.get(id(access)) || "?"
-        : openPinValue(uid, pin) ?? "○";
+        : (openPinValue(uid, pin) ?? "○");
       const labels = operands.get(uid) || [];
       labels.push({ pin, value });
       operands.set(uid, labels);
@@ -982,7 +1022,8 @@ function drawNetwork(
       k = kind(part),
       targets = outgoing(uid);
     if (
-      ["Contact", "Eq", "PContact", "NContact", "O"].includes(k) &&
+      (["Contact", "PContact", "NContact", "O"].includes(k) ||
+        comparisons.has(k)) &&
       targets.length === 1
     ) {
       const t = targets[0];
@@ -990,7 +1031,7 @@ function drawNetwork(
         parent: id(t),
         offset: pinRow(id(t), t.getAttribute("Name")!) * rowGap,
       });
-    } else if (coilKinds.includes(k) || k === "Move") {
+    } else if (coilKinds.includes(k) || k === "Move" || k === "HTA") {
       const sources = incoming(uid);
       if (sources.length !== 1) continue;
       const t = sources[0];
@@ -998,7 +1039,9 @@ function drawNetwork(
       if (
         (k === "Move"
           ? sourceKind === "TON"
-          : !simpleKinds.includes(sourceKind) && sourceKind !== "O") &&
+          : k === "HTA"
+            ? sourceKind === "GetChecksum"
+            : !simpleKinds.includes(sourceKind) && sourceKind !== "O") &&
         outgoing(id(t)).length === 1
       ) {
         attachment.set(uid, {
@@ -1007,6 +1050,39 @@ function drawNetwork(
         });
       }
     }
+  }
+  // Keep each string comparison and its conditional copies on the same rung.
+  for (const part of parts.filter((p) => kind(p) === "S_COMP")) {
+    const targets = outgoing(id(part));
+    if (targets.length !== 1) continue;
+    const contact = parts.find((p) => id(p) === id(targets[0]));
+    if (
+      !contact ||
+      kind(contact) !== "Contact" ||
+      incoming(id(contact)).length !== 1
+    )
+      continue;
+    const copies = outgoing(id(contact)).map((c) =>
+      parts.find((p) => id(p) === id(c)),
+    );
+    if (
+      copies.length !== 2 ||
+      copies.some(
+        (p) =>
+          !p ||
+          !["Move", "S_Move"].includes(kind(p)) ||
+          incoming(id(p)).length !== 1,
+      )
+    )
+      continue;
+    const first = id(copies[0]!);
+    const second = id(copies[1]!);
+    attachment.set(id(contact), { parent: id(part), offset: 0 });
+    attachment.set(first, { parent: id(part), offset: 0 });
+    attachment.set(second, {
+      parent: id(part),
+      offset: 58 + Math.max(0, ...pinOffsets.get(first)!.values()),
+    });
   }
   const anchor = (uid: string) => {
     const seen = new Set<string>();
@@ -1038,7 +1114,8 @@ function drawNetwork(
       const labels = wires
         .filter((w) =>
           all(w, "NameCon").some(
-            (c) => id(c) === uid &&
+            (c) =>
+              id(c) === uid &&
               (metadata(c.getAttribute("Name") || "") ||
                 comparisonOperand(uid, c.getAttribute("Name") || "")),
           ),
@@ -1051,7 +1128,7 @@ function drawNetwork(
         top: pos.y + 30 - n * lineHeight - 16,
         bottom:
           pos.y +
-          (k === "Eq"
+          (comparisons.has(k)
             ? 82 + n * lineHeight
             : ["PContact", "NContact"].includes(k)
               ? 63 + n * lineHeight
@@ -1063,7 +1140,11 @@ function drawNetwork(
       ? lineCount(symbol(instance)) * lineHeight + 44
       : all(part, "CallInfo").length
         ? 13
-        : -boxTop;
+        : k === "S_COMP"
+          ? 24 - boxTop
+          : k === "S_CONV"
+            ? 12 - boxTop
+            : -boxTop;
     return { top: pos.y - head, bottom: pos.y + boxBottom(uid) };
   };
   syncPositions();
@@ -1286,11 +1367,17 @@ function drawNetwork(
           const labelX = pos.x + (simple ? symbolCenter : boxWidth(uid) / 2);
           const offset = comparison
             ? below
-              ? caption === undefined ? 69 : 82
+              ? caption === undefined
+                ? 69
+                : 82
               : 25
             : below
-              ? addr ? 79 : 66
-              : simple ? 30 : -10;
+              ? addr
+                ? 79
+                : 66
+              : simple
+                ? 30
+                : -10;
           const labelY = pos.y + offset;
           linkOperand(
             text(labelX, labelY, operand, "middle", "tia-operand", below),
@@ -1380,8 +1467,8 @@ function drawNetwork(
     if (simpleKinds.includes(k)) {
       const x = pos.x + symbolCenter;
       const y = pos.y + 44;
-      const halfGap = k === "Eq" ? 14 : 8;
-      const halfHeight = k === "Eq" ? 14 : 10;
+      const halfGap = comparisons.has(k) ? 14 : 8;
+      const halfHeight = comparisons.has(k) ? 14 : 10;
       add("rect", {
         x: x - halfGap - 2,
         y: y - halfHeight,
@@ -1411,10 +1498,10 @@ function drawNetwork(
             endX: end,
           });
         }
-      } else if (k === "Eq") {
+      } else if (comparisons.has(k)) {
         line(x - halfGap, y - 12, x - halfGap, y + 12, true);
         line(x + halfGap, y - 12, x + halfGap, y + 12, true);
-        text(x, y - 3, "==", "middle", "tia-instruction");
+        text(x, y - 3, comparisons.get(k)!, "middle", "tia-instruction");
         const sourceType = all(p, "TemplateValue")
           .find((e) => e.getAttribute("Name") === "SrcType")
           ?.textContent?.trim();
@@ -1436,7 +1523,19 @@ function drawNetwork(
     const list = pins.get(id(p))!;
     const callAddress =
       info && symbols?.block(name, info.getAttribute("BlockType") || "");
-    const titleTop = callAddress ? boxTop - 13 : boxTop;
+    const template = (key: string) =>
+      all(p, "TemplateValue")
+        .find((e) => e.getAttribute("Name") === key)
+        ?.textContent?.trim();
+    const subtitles =
+      k === "S_COMP"
+        ? [template("src_type"), template("relation")].filter(
+            (v): v is string => !!v,
+          )
+        : k === "S_CONV" && template("src_type") && template("dest_type")
+          ? [template("src_type") + " TO " + template("dest_type")]
+          : [];
+    const titleTop = boxTop - (callAddress ? 13 : subtitles.length * 12);
     const h = boxBottom(id(p)) - titleTop;
     add("rect", {
       x: pos.x,
@@ -1456,18 +1555,29 @@ function drawNetwork(
     });
     text(
       pos.x + boxWidth(id(p)) / 2,
-      pos.y + boxTop + 13,
+      pos.y + (callAddress ? boxTop : titleTop) + 13,
       info
         ? '"' + name + '"'
-        : ["Sr", "Add", "Move"].includes(name)
-          ? name.toUpperCase()
-          : name,
+        : k === "PBox"
+          ? "P_TRIG"
+          : ["Sr", "Add", "Move"].includes(name)
+            ? name.toUpperCase()
+            : name,
       "middle",
       "tia-instruction",
     );
+    subtitles.forEach((subtitle, index) =>
+      text(
+        pos.x + boxWidth(id(p)) / 2,
+        pos.y + titleTop + 25 + index * 12,
+        subtitle,
+        "middle",
+      ),
+    );
     const instance = all(p, "Instance")[0];
     const instanceName = instance && symbol(instance);
-    const instanceLabel = instanceName &&
+    const instanceLabel =
+      instanceName &&
       (instanceName.startsWith("#") ? instanceName : '"' + instanceName + '"');
     const instanceAddress =
       instanceName &&
@@ -1505,14 +1615,22 @@ function drawNetwork(
         (all(p, "Parameter")
           .find((e) => e.getAttribute("Name") === pin.name)
           ?.getAttribute("Section") === "InOut" ||
-        (k === "DeviceStates" && pin.name === "STATE")
+        (k === "DeviceStates" && pin.name === "STATE") ||
+        (k === "GetChecksum" && pin.name === "Checksum") ||
+        (k === "Get_IM_Data" && pin.name === "DATA")
           ? "↔ "
           : "") +
           (info && !/^(en|eno)$/i.test(pin.name)
             ? pin.name
             : pin.name === "Ret_Val"
               ? pin.name
-              : pin.name.toUpperCase()),
+              : k === "PBox" && pin.name === "in"
+                ? "CLK"
+                : k === "PBox" && pin.name === "out"
+                  ? "Q"
+                  : k === "GetChecksum"
+                    ? pin.name
+                    : pin.name.toUpperCase()),
         pin.out ? "end" : "start",
       );
     }
