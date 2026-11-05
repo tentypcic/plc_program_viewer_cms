@@ -1018,6 +1018,16 @@ form > .dialog-actions {
 .diff-view span {
   display: block;
 }
+.dialog-error {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  color: var(--danger);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
 .toast {
   position: fixed;
   bottom: 24px;

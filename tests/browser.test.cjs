@@ -670,3 +670,42 @@ test("GitHub Pages slug redirects preserve the repository root without redirect 
   assert.equal((await getProjects(page)).length, 1);
   await context.close();
 });
+
+test("import errors stay readable inside the dialog and allow retry or cancel", async () => {
+  const { context, page, errors } = await setup();
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "↥ Importuj", exact: true }).click();
+  await (
+    await chooser
+  ).setFiles({
+    name: "invalid.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("not JSON"),
+  });
+  const dialog = page.getByRole("dialog");
+  const submit = dialog.getByRole("button", { name: "Importuj", exact: true });
+  await submit.click();
+  const error = dialog.getByRole("alert");
+  await error.waitFor({ state: "visible" });
+  assert.match(await error.textContent(), /JSON/);
+  assert.equal(
+    await error.evaluate((e) => {
+      const r = e.getBoundingClientRect();
+      return (
+        document.activeElement === e &&
+        e.contains(
+          document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2),
+        )
+      );
+    }),
+    true,
+  );
+  await submit.click();
+  await error.waitFor({ state: "visible" });
+  assert.equal(await dialog.getByRole("alert").count(), 1);
+  assert.equal((await getProjects(page)).length, 0);
+  await dialog.getByRole("button", { name: "Anuluj", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  assert.deepEqual(errors, []);
+  await context.close();
+});

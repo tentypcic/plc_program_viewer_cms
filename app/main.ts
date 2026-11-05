@@ -621,7 +621,11 @@ async function importFile() {
     ],
     "copy",
   );
-  content.append(mode.wrap);
+  const errorMessage = el("p", "dialog-error");
+  errorMessage.setAttribute("role", "alert");
+  errorMessage.tabIndex = -1;
+  errorMessage.hidden = true;
+  content.append(mode.wrap, errorMessage);
   const actions = el("div", "dialog-actions");
   const d = modal(t("import") + " · " + file.name, content, actions);
   append(
@@ -632,6 +636,8 @@ async function importFile() {
       async () => {
         if (busy) return;
         busy = true;
+        errorMessage.hidden = true;
+        errorMessage.textContent = "";
         try {
           const parsed = await readImport(file);
           const data =
@@ -651,6 +657,12 @@ async function importFile() {
           d.close();
           await refresh();
           notify(t("importSuccess"));
+        } catch (error) {
+          errorMessage.textContent =
+            t("error") + ": " +
+            (error instanceof Error ? error.message : String(error));
+          errorMessage.hidden = false;
+          errorMessage.focus();
         } finally {
           busy = false;
         }
